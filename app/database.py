@@ -1,14 +1,10 @@
-from pymongo import AsyncMongoClient
 from beanie import init_beanie
-from app.models.task import Task
-from app.models.reminder import Reminder
-from app.models.user import User
+from app.models import User,Task,Reminder
 from app.config import settings
+from motor.motor_asyncio import AsyncIOMotorClient
 
 
-async def init_db():
-    # Create Async PyMongo client
-    client = AsyncMongoClient(settings.MONGO_URI)
+async def init_db(client: AsyncIOMotorClient):
+    """Initializes the database connection and sets up Beanie with the document models."""
 
-    # Init beanie with the Product document class
-    await init_beanie(database=client[settings.MONGO_DB_NAME], document_models=[User, Task, Reminder])
+    await init_beanie(database=client.get_database(settings.MONGO_DB_NAME), document_models=[User, Task, Reminder])  # type: ignore

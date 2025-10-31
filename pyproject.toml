@@ -5,10 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "aiogram==3.22.0",
     "beanie>=2.0.0",
+    "black>=25.9.0",
     "fastapi>=0.119.1",
-    "pydantic>=2.12.3",
+    "motor>=3.7.1",
+    "pydantic>=2.4.1,<2.12",
     "pydantic-settings>=2.11.0",
-    "pymongo>=4.15.3",
     "uvicorn>=0.38.0",
 ]
