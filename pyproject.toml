@@ -8,6 +8,7 @@ dependencies = [
     "aiogram==3.22.0",
     "beanie>=2.0.0",
     "black>=25.9.0",
+    "cryptography>=46.0.3",
     "fastapi>=0.119.1",
     "motor>=3.7.1",
     "pydantic>=2.4.1,<2.12",

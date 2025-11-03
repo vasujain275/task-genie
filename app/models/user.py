@@ -8,7 +8,7 @@ class User(Document):
     name: str
     username: Optional[str] = None  # Telegram username
     gemini_key: Optional[str] = None
-    openAI_key: Optional[str] = None
+    openai_key: Optional[str] = None
     default_ai: str = "gemini"
     timezone: str = "Asia/Kolkata"
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -1,0 +1,71 @@
+from aiogram import Router
+from aiogram.filters import Command
+from aiogram.types import Message
+from app.models import User
+from app.bot.states import ConversationMode
+from app.bot.keyboards.inline import get_welcome_keyboard, get_settings_keyboard
+
+router = Router()
+
+@router.message(Command("start"))
+async def start_handler(message: Message):
+    """
+    Handles /start command.
+
+    Shows settings webapp if:
+    1. User is new (first time using the bot)
+    2. User has no Gemini key AND no OpenAI key configured
+
+    Otherwise, shows normal welcome message with quick access to settings.
+    """
+    # Get or create user
+    user = None
+    if message.from_user:
+        user = await User.get_or_create(
+            message.from_user.id,
+            message.from_user.first_name,
+            message.from_user.username,
+        )
+    else:
+        await message.answer("Unable to retrieve user ID")
+        return
+
+    # Check if user needs to configure settings
+    # (New user or missing both API keys)
+    needs_setup = (
+        user.gemini_key is None and user.openai_key is None
+    )
+
+    if needs_setup:
+        # User needs to configure settings
+        await message.answer(
+            f"👋 Welcome {user.name}! I'm Task Genie, your personal task and reminder assistant.\n\n"
+            "🔧 **First Time Setup Required**\n\n"
+            "To get started, I need you to configure your AI provider. I can work with:\n"
+            "• 🤖 Google Gemini\n"
+            "• 🧠 OpenAI (ChatGPT)\n\n"
+            "Click the button below to open settings and add your API key. "
+            "Your key will be securely encrypted and stored.\n\n"
+            "Once configured, you can tell me tasks in natural language like:\n"
+            "• 'Remind me to buy groceries tomorrow at 5pm'\n"
+            "• 'Team meeting next Monday at 10am'\n"
+            "• 'Call mom this evening'",
+            reply_markup=get_welcome_keyboard()
+        )
+    else:
+        # User is already configured
+        ai_status = "✅" if user.default_ai == "gemini" else "✅" if user.default_ai == "openai" else "⚠️"
+
+        await message.answer(
+            f"👋 Welcome back {user.name}! I'm ready to help you manage tasks.\n\n"
+            "Just tell me what you need to do in natural language, like:\n"
+            "• 'Remind me to buy groceries tomorrow at 5pm'\n"
+            "• 'I need to call mom this evening'\n"
+            "• 'Team meeting next Monday at 10am'\n\n"
+            f"⚙️ **Current Settings:**\n"
+            f"• Timezone: {user.timezone}\n"
+            f"• Default AI: {ai_status} {user.default_ai.title()}\n\n"
+            "Click the button below to update your settings anytime.",
+            reply_markup=get_settings_keyboard()
+        )
+
