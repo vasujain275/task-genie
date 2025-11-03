@@ -7,6 +7,7 @@ from app.models import User
 
 router = APIRouter()
 
+
 @router.post("/api/save-settings")
 async def save_settings(update_settings: SettingsUpdate):
     """
@@ -21,7 +22,7 @@ async def save_settings(update_settings: SettingsUpdate):
     verified_user = verify_telegram_webapp_data(update_settings.init_data)
 
     # STEP 2: Extract telegram_id from VERIFIED data (not from user input!)
-    telegram_id = verified_user['telegram_id']
+    telegram_id = verified_user["telegram_id"]
 
     # STEP 3: Now we KNOW this is the real user, so we can update their settings
     user = await User.find_one(User.telegram_id == telegram_id)
@@ -46,10 +47,7 @@ async def save_settings(update_settings: SettingsUpdate):
     return {
         "success": True,
         "message": "Settings saved successfully",
-        "user": {
-            "telegram_id": telegram_id,
-            "name": verified_user['first_name']
-        }
+        "user": {"telegram_id": telegram_id, "name": verified_user["first_name"]},
     }
 
 
@@ -59,7 +57,7 @@ async def settings_page():
     Serves the settings page.
     Notice: NO telegram_id in URL! Same URL for all users.
     """
-    return """
+    return r"""
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -71,135 +69,426 @@ async def settings_page():
         <script src="https://unpkg.com/lucide@latest"></script>
         <style>
             * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
                 -webkit-font-smoothing: antialiased;
                 -moz-osx-font-smoothing: grayscale;
             }
+
             body {
-                background: var(--tg-theme-bg-color, #ffffff);
-                color: var(--tg-theme-text-color, #000000);
+                background: #18222d;
+                color: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
             }
-            .tg-accent {
-                color: var(--tg-theme-link-color, #2481cc);
+
+            /* Animations */
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
-            .tg-secondary {
-                color: var(--tg-theme-hint-color, #999999);
+
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateX(-10px); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+
+            /* Container */
+            .container {
+                width: 100%;
+                max-width: 600px;
+                animation: fadeIn 0.5s ease-out;
+            }
+
+            /* Header */
+            .header {
+                margin-bottom: 32px;
+                animation: slideIn 0.4s ease-out;
+                text-align: center;
+            }
+
+            @media (min-width: 640px) {
+                .header {
+                    text-align: left;
+                }
+            }
+
+            .header-content {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            @media (min-width: 640px) {
+                .header-content {
+                    justify-content: flex-start;
+                }
+            }
+
+            .icon-box {
+                width: 52px;
+                height: 52px;
+                background: linear-gradient(135deg, #3390ec 0%, #2b7cd3 100%);
+                border-radius: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 8px 16px rgba(51, 144, 236, 0.3);
+                transition: all 0.3s ease;
+            }
+
+            .icon-box:hover {
+                transform: translateY(-2px) scale(1.05);
+                box-shadow: 0 12px 24px rgba(51, 144, 236, 0.4);
+            }
+
+            .header h1 {
+                font-size: 36px;
+                font-weight: 700;
+                color: #ffffff;
+                letter-spacing: -0.5px;
+            }
+
+            .header p {
+                font-size: 15px;
+                color: #8e9297;
+                margin-top: 4px;
+            }
+
+            /* Card */
+            .card {
+                background: #212d3b;
+                border-radius: 20px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                padding: 32px;
+                animation: fadeIn 0.5s ease-out 0.1s backwards;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            @media (max-width: 639px) {
+                .card {
+                    padding: 24px;
+                }
+            }
+
+            /* Form */
+            .form-group {
+                margin-bottom: 24px;
+                animation: slideIn 0.3s ease-out;
+            }
+
+            .form-group:nth-child(2) { animation-delay: 0.1s; }
+            .form-group:nth-child(4) { animation-delay: 0.15s; }
+            .form-group:nth-child(6) { animation-delay: 0.2s; }
+
+            .form-label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                color: #ffffff;
+                margin-bottom: 10px;
+            }
+
+            .form-label svg {
+                color: #3390ec;
+            }
+
+            /* Input & Select */
+            input, select {
+                width: 100%;
+                padding: 14px 16px;
+                font-size: 15px;
+                color: #ffffff;
+                background: #18222d;
+                border: 1.5px solid #2b3942;
+                border-radius: 12px;
+                outline: none;
+                transition: all 0.2s ease;
+                font-family: inherit;
+            }
+
+            input:focus, select:focus {
+                border-color: #3390ec;
+                background: #1a2633;
+                box-shadow: 0 0 0 4px rgba(51, 144, 236, 0.15);
+                transform: translateY(-1px);
+            }
+
+            input:hover, select:hover {
+                border-color: #3390ec;
+                background: #1a2633;
+            }
+
+            input::placeholder {
+                color: #6b7280;
+            }
+
+            /* Select specific styles */
+            select {
+                cursor: pointer;
+                appearance: none;
+                background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238e9297' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 16px center;
+                padding-right: 40px;
+            }
+
+            select option {
+                padding: 12px;
+                background: #18222d;
+                color: #ffffff;
+            }
+
+            /* Help text */
+            .help-text {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+                color: #8e9297;
+                margin-top: 8px;
+            }
+
+            .help-text svg {
+                flex-shrink: 0;
+            }
+
+            /* Info box */
+            .info-box {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 14px 16px;
+                background: rgba(51, 144, 236, 0.1);
+                border: 1px solid rgba(51, 144, 236, 0.3);
+                border-radius: 12px;
+                font-size: 13px;
+                color: #c1d7ee;
+                margin-top: 10px;
+            }
+
+            .info-box svg {
+                color: #3390ec;
+                flex-shrink: 0;
+                margin-top: 2px;
+            }
+
+            /* Divider */
+            .divider {
+                height: 1px;
+                background: rgba(255, 255, 255, 0.08);
+                margin: 28px 0;
+            }
+
+            /* Button */
+            .btn-primary {
+                width: 100%;
+                padding: 16px 24px;
+                font-size: 16px;
+                font-weight: 600;
+                color: #ffffff;
+                background: linear-gradient(135deg, #3390ec 0%, #2b7cd3 100%);
+                border: none;
+                border-radius: 12px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                box-shadow: 0 8px 16px rgba(51, 144, 236, 0.3);
+                transition: all 0.3s ease;
+                margin-top: 12px;
+            }
+
+            .btn-primary:hover {
+                background: linear-gradient(135deg, #2b7cd3 0%, #1e5fa3 100%);
+                box-shadow: 0 12px 24px rgba(51, 144, 236, 0.4);
+                transform: translateY(-2px);
+            }
+
+            .btn-primary:active {
+                transform: translateY(0);
+                box-shadow: 0 4px 12px rgba(51, 144, 236, 0.3);
+            }
+
+            .btn-primary:disabled {
+                background: #4a5568;
+                cursor: not-allowed;
+                box-shadow: none;
+                transform: none;
+                opacity: 0.6;
+            }
+
+            /* Password toggle */
+            .input-wrapper {
+                position: relative;
+            }
+
+            .toggle-password {
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: transparent;
+                border: none;
+                padding: 8px;
+                cursor: pointer;
+                color: #6b7280;
+                transition: all 0.2s ease;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .toggle-password:hover {
+                background: rgba(51, 144, 236, 0.1);
+                color: #3390ec;
+            }
+
+            /* Status messages */
+            .status-message {
+                display: none;
+                padding: 16px 18px;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: 500;
+                margin-top: 20px;
+                animation: fadeIn 0.3s ease-out;
+            }
+
+            .status-message.show {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .status-success {
+                background: rgba(76, 175, 80, 0.15);
+                color: #81c784;
+                border: 1px solid rgba(76, 175, 80, 0.3);
+            }
+
+            .status-error {
+                background: rgba(244, 67, 54, 0.15);
+                color: #e57373;
+                border: 1px solid rgba(244, 67, 54, 0.3);
+            }
+
+            /* Footer */
+            .footer {
+                text-align: center;
+                margin-top: 24px;
+                color: #6b7280;
+                font-size: 13px;
+                animation: fadeIn 0.5s ease-out 0.3s backwards;
+            }
+
+            /* Loading animation */
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+
+            .spinner {
+                animation: spin 1s linear infinite;
             }
         </style>
     </head>
-    <body class="min-h-screen antialiased bg-gray-50">
-        <div class="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <body>
+        <div class="container">
             <!-- Header -->
-            <div class="mb-8">
-                <div class="flex items-center gap-3 mb-2">
-                    <div class="w-11 h-11 sm:w-12 sm:h-12 bg-black rounded-2xl flex items-center justify-center shadow-lg">
-                        <i data-lucide="settings" class="w-6 h-6 text-white stroke-[2]"></i>
+            <div class="header">
+                <div class="header-content">
+                    <div class="icon-box">
+                        <i data-lucide="settings" style="width: 24px; height: 24px; color: white; stroke-width: 2;"></i>
                     </div>
-                    <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight">Settings</h1>
+                    <h1>Settings</h1>
                 </div>
-                <p class="text-sm text-gray-600 ml-0 sm:ml-[56px]">
-                    Configure your preferences and API settings
-                </p>
+                <p>Configure your preferences and API settings</p>
             </div>
 
             <!-- Form Card -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                                <form id="settingsForm" class="p-5 sm:p-6 space-y-6">
-
+            <div class="card">
+                <form id="settingsForm">
                     <!-- Timezone Field -->
-                    <div class="space-y-2.5">
-                        <label for="timezone" class="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                            <i data-lucide="globe" class="w-4 h-4 stroke-[2] text-blue-600"></i>
+                    <div class="form-group">
+                        <label for="timezone" class="form-label">
+                            <i data-lucide="globe" style="width: 16px; height: 16px; stroke-width: 2;"></i>
                             <span>Timezone</span>
                         </label>
-                        <select
-                            id="timezone"
-                            name="timezone"
-                            required
-                            class="w-full px-4 py-3 text-sm bg-white border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
-                        >
+                        <select id="timezone" name="timezone" required>
                             <option value="">Select timezone...</option>
                         </select>
-                        <p class="text-xs text-gray-500 flex items-center gap-1.5">
-                            <i data-lucide="info" class="w-3.5 h-3.5 stroke-[2]"></i>
+                        <p class="help-text">
+                            <i data-lucide="info" style="width: 14px; height: 14px; stroke-width: 2;"></i>
                             <span>Your current timezone will be auto-selected</span>
                         </p>
                     </div>
 
-                    <!-- Divider -->
-                    <div class="border-t border-gray-100"></div>
+                    <div class="divider"></div>
 
                     <!-- AI Provider Field -->
-                    <div class="space-y-2.5">
-                        <label for="ai_provider" class="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                            <i data-lucide="sparkles" class="w-4 h-4 stroke-[2] text-blue-600"></i>
+                    <div class="form-group">
+                        <label for="ai_provider" class="form-label">
+                            <i data-lucide="sparkles" style="width: 16px; height: 16px; stroke-width: 2;"></i>
                             <span>AI Provider</span>
                         </label>
-                        <div class="relative">
-                            <select
-                                id="ai_provider"
-                                name="default_ai"
-                                required
-                                class="w-full px-4 py-3 text-sm bg-white border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all appearance-none cursor-pointer pr-10"
-                            >
-                                <option value="gemini">Google Gemini</option>
-                                <option value="openai">OpenAI</option>
-                            </select>
-                            <i data-lucide="chevron-down" class="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400"></i>
-                        </div>
+                        <select id="ai_provider" name="default_ai" required>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI</option>
+                        </select>
                     </div>
 
-                    <!-- Divider -->
-                    <div class="border-t border-gray-100"></div>
+                    <div class="divider"></div>
 
                     <!-- API Key Field -->
-                    <div class="space-y-2.5">
-                        <label for="api_key" class="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                            <i data-lucide="key" class="w-4 h-4 stroke-[2] text-blue-600"></i>
+                    <div class="form-group">
+                        <label for="api_key" class="form-label">
+                            <i data-lucide="key" style="width: 16px; height: 16px; stroke-width: 2;"></i>
                             <span>API Key</span>
                         </label>
-                        <div class="relative">
+                        <div class="input-wrapper">
                             <input
                                 type="password"
                                 id="api_key"
                                 name="api_key"
                                 placeholder="Enter your API key"
                                 required
-                                class="w-full px-4 py-3 text-sm bg-white border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all font-mono tracking-wide pr-10"
+                                style="font-family: monospace; letter-spacing: 1px;"
                             >
-                            <button
-                                type="button"
-                                id="togglePassword"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors p-1 hover:bg-gray-100 rounded-lg"
-                            >
-                                <i data-lucide="eye" class="w-4 h-4 stroke-[2]"></i>
+                            <button type="button" id="togglePassword" class="toggle-password">
+                                <i data-lucide="eye" style="width: 16px; height: 16px; stroke-width: 2;"></i>
                             </button>
                         </div>
-                        <div class="flex items-start gap-2 text-xs text-gray-600 bg-blue-50/50 px-3.5 py-2.5 rounded-lg border border-blue-100">
-                            <i data-lucide="shield-check" class="w-3.5 h-3.5 mt-0.5 stroke-[2] text-blue-600 flex-shrink-0"></i>
+                        <div class="info-box">
+                            <i data-lucide="shield-check" style="width: 14px; height: 14px; stroke-width: 2;"></i>
                             <span>Your key is encrypted and never stored in chat history</span>
                         </div>
                     </div>
 
                     <!-- Submit Button -->
-                    <div class="pt-2">
-                        <button
-                            type="submit"
-                            id="submitBtn"
-                            class="w-full py-3.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all rounded-xl shadow-lg shadow-blue-600/20 hover:shadow-xl hover:shadow-blue-600/30 flex items-center justify-center gap-2"
-                        >
-                            <i data-lucide="save" class="w-4 h-4 stroke-[2.5]"></i>
-                            <span>Save Settings</span>
-                        </button>
-                    </div>
+                    <button type="submit" id="submitBtn" class="btn-primary">
+                        <i data-lucide="save" style="width: 16px; height: 16px; stroke-width: 2.5;"></i>
+                        <span>Save Settings</span>
+                    </button>
 
                     <!-- Status Message -->
-                    <div id="status" class="hidden rounded-xl text-sm font-medium"></div>
+                    <div id="status" class="status-message"></div>
                 </form>
             </div>
 
             <!-- Footer -->
-            <div class="mt-8 text-center">
-                <p class="text-xs text-gray-400">Powered by Task Genie</p>
+            <div class="footer">
+                <p>Powered by Task Genie</p>
             </div>
         </div>
 
@@ -219,7 +508,7 @@ async def settings_page():
                 const type = apiKeyInput.type === 'password' ? 'text' : 'password';
                 apiKeyInput.type = type;
                 const icon = type === 'password' ? 'eye' : 'eye-off';
-                togglePassword.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 stroke-[2]"></i>`;
+                togglePassword.innerHTML = `<i data-lucide="${icon}" style="width: 16px; height: 16px; stroke-width: 2;"></i>`;
                 lucide.createIcons();
             });
 
@@ -257,9 +546,9 @@ async def settings_page():
                 const statusDiv = document.getElementById('status');
 
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 stroke-[2] animate-spin"></i><span>Saving...</span>';
+                submitBtn.innerHTML = '<i data-lucide="loader-2" class="spinner" style="width: 16px; height: 16px; stroke-width: 2;"></i><span>Saving...</span>';
                 lucide.createIcons();
-                statusDiv.className = 'hidden';
+                statusDiv.className = 'status-message';
 
                 try {
                     const formData = new FormData(e.target);
@@ -281,8 +570,8 @@ async def settings_page():
                     const result = await response.json();
 
                     if (response.ok) {
-                        statusDiv.className = 'block p-4 text-sm font-medium rounded-xl bg-green-50 text-green-900 border border-green-200';
-                        statusDiv.innerHTML = '<div class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 stroke-[2] text-green-600"></i><span>Settings saved successfully</span></div>';
+                        statusDiv.className = 'status-message status-success show';
+                        statusDiv.innerHTML = '<i data-lucide="check-circle-2" style="width: 16px; height: 16px; stroke-width: 2;"></i><span>Settings saved successfully</span>';
                         lucide.createIcons();
 
                         // Close the web app after 2 seconds
@@ -292,12 +581,12 @@ async def settings_page():
                     }
 
                 } catch (error) {
-                    statusDiv.className = 'block p-4 text-sm font-medium rounded-xl bg-red-50 text-red-900 border border-red-200';
-                    statusDiv.innerHTML = `<div class="flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4 stroke-[2] text-red-600"></i><span>${error.message}</span></div>`;
+                    statusDiv.className = 'status-message status-error show';
+                    statusDiv.innerHTML = `<i data-lucide="alert-circle" style="width: 16px; height: 16px; stroke-width: 2;"></i><span>${error.message}</span>`;
                     lucide.createIcons();
                 } finally {
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i data-lucide="save" class="w-4 h-4 stroke-[2.5]"></i><span>Save Settings</span>';
+                    submitBtn.innerHTML = '<i data-lucide="save" style="width: 16px; height: 16px; stroke-width: 2.5;"></i><span>Save Settings</span>';
                     lucide.createIcons();
                 }
             });
