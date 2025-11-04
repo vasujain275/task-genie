@@ -136,6 +136,18 @@ async def settings_page():
                 border-radius: 6px;
                 outline: none;
                 font-family: inherit;
+                transition: all 0.2s ease;
+                -webkit-user-select: text;
+                -moz-user-select: text;
+                -ms-user-select: text;
+                user-select: text;
+                -webkit-touch-callout: default;
+            }
+
+            input {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
             }
 
             input:focus,
@@ -148,19 +160,50 @@ async def settings_page():
                 color: #6d7781;
             }
 
+            input::-webkit-input-placeholder {
+                color: #6d7781;
+            }
+
+            input:-moz-placeholder {
+                color: #6d7781;
+            }
+
+            input::-moz-placeholder {
+                color: #6d7781;
+            }
+
+            input:-ms-input-placeholder {
+                color: #6d7781;
+            }
+
             select {
                 cursor: pointer;
                 appearance: none;
-                background-image: url("data:image/svg+xml,%3Csvg width='16' height='10' viewBox='0 0 16 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 2L8 8L14 2' stroke='%238e9297' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%238e9297' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
                 background-repeat: no-repeat;
                 background-position: right 16px center;
-                padding-right: 44px;
+                padding-right: 40px;
+            }
+
+            select:hover {
+                border-color: #3390ec;
+            }
+
+            select::-ms-expand {
+                display: none;
             }
 
             select option {
                 background: #17212b;
                 color: #ffffff;
-                padding: 12px;
+                padding: 10px;
+                line-height: 1.6;
+            }
+
+            select option:checked {
+                background: #3390ec;
             }
 
             .help-text {
@@ -190,28 +233,6 @@ async def settings_page():
                 height: 1px;
                 background: rgba(255, 255, 255, 0.08);
                 margin: 20px 0;
-            }
-
-            .password-wrapper {
-                position: relative;
-            }
-
-            .password-toggle {
-                position: absolute;
-                right: 12px;
-                top: 50%;
-                transform: translateY(-50%);
-                background: none;
-                border: none;
-                padding: 8px;
-                cursor: pointer;
-                color: #6d7781;
-                display: flex;
-                align-items: center;
-            }
-
-            .password-toggle:hover {
-                color: #3390ec;
             }
 
             .btn {
@@ -318,19 +339,21 @@ async def settings_page():
                     <!-- API Key -->
                     <div class="form-group">
                         <label for="api_key">API Key</label>
-                        <div class="password-wrapper">
-                            <input
-                                type="password"
-                                id="api_key"
-                                name="api_key"
-                                placeholder="Enter your API key"
-                                required
-                                style="font-family: monospace; padding-right: 44px;"
-                            >
-                            <button type="button" id="togglePassword" class="password-toggle">
-                                <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
-                            </button>
-                        </div>
+                        <input
+                            type="text"
+                            id="api_key"
+                            name="api_key"
+                            placeholder="Enter your API key"
+                            required
+                            style="font-family: monospace;"
+                            spellcheck="false"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            data-form-type="other"
+                            readonly
+                            onfocus="this.removeAttribute('readonly');"
+                        >
                         <div class="info-box">
                             <i data-lucide="shield-check" style="width: 16px; height: 16px;"></i>
                             <span>Your key is encrypted and stored securely</span>
@@ -362,18 +385,6 @@ async def settings_page():
             tg.expand();
             tg.ready();
 
-            // Password toggle
-            const toggleBtn = document.getElementById('togglePassword');
-            const apiKeyInput = document.getElementById('api_key');
-
-            toggleBtn.addEventListener('click', () => {
-                const type = apiKeyInput.type === 'password' ? 'text' : 'password';
-                apiKeyInput.type = type;
-                const icon = type === 'password' ? 'eye' : 'eye-off';
-                toggleBtn.innerHTML = `<i data-lucide="${icon}" style="width: 18px; height: 18px;"></i>`;
-                lucide.createIcons();
-            });
-
             // Populate timezone dropdown
             const timezones = Intl.supportedValuesOf('timeZone');
             const timezoneSelect = document.getElementById('timezone');
@@ -387,6 +398,20 @@ async def settings_page():
                     option.selected = true;
                 }
                 timezoneSelect.appendChild(option);
+            });
+
+            // WebKit paste fix for API key input
+            const apiKeyInput = document.getElementById('api_key');
+
+            // Enable paste explicitly for WebKit
+            apiKeyInput.addEventListener('paste', (e) => {
+                // Allow default paste behavior
+                e.stopPropagation();
+            }, true);
+
+            // Focus handler to ensure input is ready
+            apiKeyInput.addEventListener('focus', (e) => {
+                e.target.removeAttribute('readonly');
             });
 
             // Get Telegram auth data
