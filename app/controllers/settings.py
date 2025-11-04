@@ -62,7 +62,6 @@ async def save_settings(update_settings: SettingsUpdate):
     except Exception as e:
         logger.error(f"Error saving settings: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to save settings")
-    }
 
 
 @router.get("/settings", response_class=HTMLResponse)
