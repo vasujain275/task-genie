@@ -12,36 +12,53 @@ from app.bot.menu import set_bot_commands_menu
 from app.bot.instance import bot
 from app.bot.dispatcher import setup_dispatcher
 from app.controllers.settings import router as settings_router
+from app.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manages application lifecycle - startup and shutdown"""
-    client = AsyncIOMotorClient(settings.MONGO_URI)
-    await init_db(client)
+    logger.info("Starting application initialization...")
 
-    webhook_url = f"{settings.TELEGRAM_WEBAPP_URL}/webhook"
+    try:
+        client = AsyncIOMotorClient(settings.MONGO_URI)
+        logger.info("MongoDB client created")
 
-    # Setup dispatcher with all handlers
-    dp = setup_dispatcher()
+        await init_db(client)
+        logger.info("Database initialized")
 
-    if webhook_url:
-        await bot.set_webhook(webhook_url)
+        webhook_url = f"{settings.TELEGRAM_WEBAPP_URL}/webhook"
 
-    await set_bot_commands_menu(bot)
+        # Setup dispatcher with all handlers
+        dp = setup_dispatcher()
+        logger.info("Dispatcher configured with handlers")
 
-    print("✅ Bot initialized with Redis FSM storage")
+        if webhook_url:
+            await bot.set_webhook(webhook_url)
+            logger.info(f"Webhook set to: {webhook_url}")
 
-    # Store dp in app state for access in webhook handler
-    app.state.dp = dp
+        await set_bot_commands_menu(bot)
+        logger.info("Bot commands menu configured")
 
-    yield  # Application runs here
+        logger.info("✅ Bot initialized successfully with Redis FSM storage")
 
-    # ========= SHUTDOWN =========
-    await bot.delete_webhook()
-    await bot.session.close()
-    client.close()
-    print("🛑 Bot shut down gracefully")
+        # Store dp in app state for access in webhook handler
+        app.state.dp = dp
+
+        yield  # Application runs here
+
+        # ========= SHUTDOWN =========
+        logger.info("Shutting down application...")
+        await bot.delete_webhook()
+        await bot.session.close()
+        client.close()
+        logger.info("🛑 Bot shut down gracefully")
+
+    except Exception as e:
+        logger.error(f"Error during application lifecycle: {e}", exc_info=True)
+        raise
 
 
 app = FastAPI(title="Task Genie", lifespan=lifespan)
@@ -60,12 +77,18 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
+    logger.debug("Health check requested")
     return {"status": "ok"}
 
 
 @app.post("/webhook")
 async def webhook(request: Request):
     """Receive updates from Telegram"""
-    update = types.Update(**await request.json())
-    await request.app.state.dp.feed_webhook_update(bot=bot, update=update)
-    return {"ok": True}
+    try:
+        logger.debug("Webhook update received")
+        update = types.Update(**await request.json())
+        await request.app.state.dp.feed_webhook_update(bot=bot, update=update)
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Error processing webhook: {e}", exc_info=True)
+        return {"ok": False}

@@ -4,7 +4,9 @@ from fastapi.responses import HTMLResponse
 from app.types import SettingsUpdate
 from app.utils.security import verify_telegram_webapp_data, encrypt_api_key
 from app.models import User
+from app.utils.logger import setup_logger
 
+logger = setup_logger(__name__)
 router = APIRouter()
 
 
@@ -16,38 +18,50 @@ async def save_settings(update_settings: SettingsUpdate):
     SECURITY: Notice we don't accept telegram_id as a parameter!
     We extract it from the VERIFIED Telegram authentication data.
     """
+    try:
+        logger.info("Processing save-settings request")
+        
+        # STEP 1: Verify the authentication data
+        # This throws HTTPException if verification fails
+        verified_user = verify_telegram_webapp_data(update_settings.init_data)
+        logger.debug(f"Telegram webapp data verified for user")
 
-    # STEP 1: Verify the authentication data
-    # This throws HTTPException if verification fails
-    verified_user = verify_telegram_webapp_data(update_settings.init_data)
+        # STEP 2: Extract telegram_id from VERIFIED data (not from user input!)
+        telegram_id = verified_user["telegram_id"]
 
-    # STEP 2: Extract telegram_id from VERIFIED data (not from user input!)
-    telegram_id = verified_user["telegram_id"]
+        # STEP 3: Now we KNOW this is the real user, so we can update their settings
+        user = await User.find_one(User.telegram_id == telegram_id)
+        if not user:
+            logger.warning(f"User not found: {telegram_id}")
+            raise HTTPException(status_code=404, detail="User not found")
 
-    # STEP 3: Now we KNOW this is the real user, so we can update their settings
-    user = await User.find_one(User.telegram_id == telegram_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        # Update settings
+        user.timezone = update_settings.timezone
+        user.default_ai = update_settings.default_ai
 
-    # Update settings
-    user.timezone = update_settings.timezone
-    user.default_ai = update_settings.default_ai
+        # Encrypt and save API key based on selected AI provider
+        if update_settings.api_key:
+            encrypted_key = encrypt_api_key(update_settings.api_key)
 
-    # Encrypt and save API key based on selected AI provider
-    if update_settings.api_key:
-        encrypted_key = encrypt_api_key(update_settings.api_key)
+            if update_settings.default_ai == "gemini":
+                user.gemini_key = encrypted_key
+            elif update_settings.default_ai == "openai":
+                user.openai_key = encrypted_key
+            
+            logger.info(f"Settings updated for user {telegram_id}, AI: {update_settings.default_ai}")
 
-        if update_settings.default_ai == "gemini":
-            user.gemini_key = encrypted_key
-        elif update_settings.default_ai == "openai":
-            user.openai_key = encrypted_key
+        await user.save()
 
-    await user.save()
-
-    return {
-        "success": True,
-        "message": "Settings saved successfully",
-        "user": {"telegram_id": telegram_id, "name": verified_user["first_name"]},
+        return {
+            "success": True,
+            "message": "Settings saved successfully",
+            "user": {"telegram_id": telegram_id, "name": verified_user["first_name"]},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving settings: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save settings")
     }
 
 

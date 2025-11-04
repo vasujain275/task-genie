@@ -8,8 +8,12 @@ from datetime import datetime, timedelta
 from app.config import settings
 from cryptography.fernet import Fernet, InvalidToken
 from typing import Optional
+from app.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 # ============= TELEGRAM WEB APP AUTHENTICATION =============
+
 
 def verify_telegram_webapp_data(init_data: str) -> dict:
     """
@@ -22,12 +26,14 @@ def verify_telegram_webapp_data(init_data: str) -> dict:
     3. Creating fake authentication requests
     """
     try:
+        logger.debug("Verifying Telegram webapp data")
         # Parse the init_data string
         parsed_data = parse_qs(init_data)
 
         # Extract and remove hash
         received_hash = parsed_data.get('hash', [''])[0]
         if not received_hash:
+            logger.warning("No hash provided in webapp data")
             raise ValueError("No hash provided")
 
         # Remove hash from data for verification
@@ -53,15 +59,19 @@ def verify_telegram_webapp_data(init_data: str) -> dict:
 
         # Verify hash matches
         if not hmac.compare_digest(received_hash, calculated_hash):
+            logger.warning("Webapp data hash verification failed")
             raise ValueError("Hash verification failed")
 
         # Check auth_date is recent (within 24 hours)
         auth_date = int(data_check_dict.get('auth_date', 0))
         if datetime.now().timestamp() - auth_date > 86400:  # 24 hours
+            logger.warning("Webapp authentication data is too old")
             raise ValueError("Authentication data is too old")
 
         # Parse user data
         user_data = json.loads(unquote(data_check_dict.get('user', '{}')))
+
+        logger.info(f"Webapp data verified successfully for user: {user_data.get('id')}")
 
         return {
             'telegram_id': user_data.get('id'),
@@ -71,6 +81,7 @@ def verify_telegram_webapp_data(init_data: str) -> dict:
         }
 
     except Exception as e:
+        logger.error(f"Telegram authentication failed: {e}")
         raise HTTPException(
             status_code=401,
             detail=f"Invalid Telegram authentication: {str(e)}"
@@ -95,19 +106,26 @@ def encrypt_api_key(api_key: str) -> str:
         ValueError: If encryption key not set or API key is empty
     """
     if not ENCRYPTION_KEY:
+        logger.error("ENCRYPTION_KEY not set in environment")
         raise ValueError("ENCRYPTION_KEY not set in environment variables")
 
     if not api_key or not api_key.strip():
+        logger.warning("Attempt to encrypt empty API key")
         raise ValueError("API key cannot be empty")
 
-    # Create Fernet cipher instance with your encryption key
-    f = Fernet(ENCRYPTION_KEY)
+    try:
+        # Create Fernet cipher instance with your encryption key
+        f = Fernet(ENCRYPTION_KEY)
 
-    # Encrypt the API key
-    encrypted = f.encrypt(api_key.encode())
+        # Encrypt the API key
+        encrypted = f.encrypt(api_key.encode())
 
-    # Return as string (Fernet returns bytes, we convert to string for MongoDB)
-    return encrypted.decode()
+        # Return as string (Fernet returns bytes, we convert to string for MongoDB)
+        logger.debug("API key encrypted successfully")
+        return encrypted.decode()
+    except Exception as e:
+        logger.error(f"Failed to encrypt API key: {e}")
+        raise
 
 
 def decrypt_api_key(encrypted_key: str) -> Optional[str]:
@@ -124,6 +142,7 @@ def decrypt_api_key(encrypted_key: str) -> Optional[str]:
         ValueError: If encryption key not set or decryption fails
     """
     if not ENCRYPTION_KEY:
+        logger.error("ENCRYPTION_KEY not set in environment")
         raise ValueError("ENCRYPTION_KEY not set in environment variables")
 
     try:
@@ -134,8 +153,13 @@ def decrypt_api_key(encrypted_key: str) -> Optional[str]:
         decrypted = f.decrypt(encrypted_key.encode())
 
         # Return as string
+        logger.debug("API key decrypted successfully")
         return decrypted.decode()
 
     except InvalidToken:
         # This happens if key was tampered with or wrong encryption key used
+        logger.error("Failed to decrypt API key - invalid or corrupted data")
         raise ValueError("Failed to decrypt API key - invalid or corrupted data")
+    except Exception as e:
+        logger.error(f"Failed to decrypt API key: {e}")
+        raise

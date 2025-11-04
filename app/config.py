@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     TELEGRAM_WEBAPP_URL: str = ""
     REDIS_URL: str = ""
     ENCRYPTION_KEY: str = ""
+    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
     class Config:
         env_file = ".env"

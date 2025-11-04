@@ -4,8 +4,11 @@ from aiogram.types import Message
 from app.models import User
 from app.bot.states import ConversationMode
 from app.bot.keyboards.inline import get_welcome_keyboard, get_settings_keyboard
+from app.utils.logger import setup_logger
 
+logger = setup_logger(__name__)
 router = Router()
+
 
 @router.message(Command("start"))
 async def start_handler(message: Message):
@@ -18,23 +21,29 @@ async def start_handler(message: Message):
 
     Otherwise, shows normal welcome message with quick access to settings.
     """
-    # Get or create user
-    user = None
-    if message.from_user:
-        user = await User.get_or_create(
-            message.from_user.id,
-            message.from_user.first_name,
-            message.from_user.username,
-        )
-    else:
-        await message.answer("Unable to retrieve user ID")
+    try:
+        # Get or create user
+        user = None
+        if message.from_user:
+            logger.info(f"Processing /start command from user: {message.from_user.id}")
+            user = await User.get_or_create(
+                message.from_user.id,
+                message.from_user.first_name,
+                message.from_user.username,
+            )
+            logger.debug(f"User retrieved/created: {user.telegram_id}")
+        else:
+            logger.warning("Received /start command without user information")
+            await message.answer("Unable to retrieve user ID")
+            return
+    except Exception as e:
+        logger.error(f"Error in start_handler: {e}", exc_info=True)
+        await message.answer("An error occurred. Please try again later.")
         return
 
     # Check if user needs to configure settings
     # (New user or missing both API keys)
-    needs_setup = (
-        user.gemini_key is None and user.openai_key is None
-    )
+    needs_setup = user.gemini_key is None and user.openai_key is None
 
     if needs_setup:
         # User needs to configure settings
@@ -50,11 +59,15 @@ async def start_handler(message: Message):
             "• 'Remind me to buy groceries tomorrow at 5pm'\n"
             "• 'Team meeting next Monday at 10am'\n"
             "• 'Call mom this evening'",
-            reply_markup=get_welcome_keyboard()
+            reply_markup=get_welcome_keyboard(),
         )
     else:
         # User is already configured
-        ai_status = "✅" if user.default_ai == "gemini" else "✅" if user.default_ai == "openai" else "⚠️"
+        ai_status = (
+            "✅"
+            if user.default_ai == "gemini"
+            else "✅" if user.default_ai == "openai" else "⚠️"
+        )
 
         await message.answer(
             f"👋 Welcome back {user.name}! I'm ready to help you manage tasks.\n\n"
@@ -66,6 +79,5 @@ async def start_handler(message: Message):
             f"• Timezone: {user.timezone}\n"
             f"• Default AI: {ai_status} {user.default_ai.title()}\n\n"
             "Click the button below to update your settings anytime.",
-            reply_markup=get_settings_keyboard()
+            reply_markup=get_settings_keyboard(),
         )
-
