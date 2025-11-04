@@ -20,7 +20,7 @@ async def save_settings(update_settings: SettingsUpdate):
     """
     try:
         logger.info("Processing save-settings request")
-        
+
         # STEP 1: Verify the authentication data
         # This throws HTTPException if verification fails
         verified_user = verify_telegram_webapp_data(update_settings.init_data)
@@ -47,7 +47,7 @@ async def save_settings(update_settings: SettingsUpdate):
                 user.gemini_key = encrypted_key
             elif update_settings.default_ai == "openai":
                 user.openai_key = encrypted_key
-            
+
             logger.info(f"Settings updated for user {telegram_id}, AI: {update_settings.default_ai}")
 
         await user.save()
