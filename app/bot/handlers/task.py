@@ -1,154 +1,133 @@
 """
-Task-related message handlers.
-Handles task creation, confirmation, and editing flows.
+Task-related utility functions and helpers.
+Most task logic is now handled by LangGraph AI agent in common.py
 """
 
-from aiogram import types
-from aiogram.fsm.context import FSMContext
-
+from typing import Optional, Dict, Any
+from app.models.task import Task
 from app.models.user import User
-from app.bot.states import ConversationMode
-from app.services import TaskService
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# Initialize service
-task_service = TaskService()
 
-
-async def process_nlp_task(message: types.Message, state: FSMContext, user: User):
+async def create_task_in_db(user: User, task_data: Dict[str, Any]) -> Optional[Task]:
     """
-    Process natural language input as a task.
-    Uses AI to parse task details from the text.
+    Create a task directly in MongoDB.
+    This is called by the LangGraph agent after parsing user input.
 
     Args:
-        message: Telegram message object
-        state: FSM context for state management
         user: User object
-    """
-    if message.from_user is None or message.text is None:
-        return
+        task_data: Dictionary containing:
+            - title: str (required)
+            - description: str (optional)
+            - due_date: datetime (optional)
+            - priority: str (optional, default: 'medium')
+            - recurrence: str (optional)
+            - tags: list[str] (optional)
 
-    logger.info(f"Processing NLP task from user {message.from_user.id}: {message.text}")
+    Returns:
+        Created Task object or None if creation failed
+    """
+    logger.info(f"Creating task in DB for user {user.telegram_id}: {task_data.get('title')}")
 
     try:
-        # Use the task service to process the input
-        parsed_task = await task_service.process_task_from_nlp(message.text, user)
+        # TODO: Implement actual task creation in MongoDB
+        # task = Task(
+        #     user_id=user.id,
+        #     title=task_data['title'],
+        #     description=task_data.get('description', ''),
+        #     due_date=task_data.get('due_date'),
+        #     priority=task_data.get('priority', 'medium'),
+        #     recurrence=task_data.get('recurrence'),
+        #     tags=task_data.get('tags', []),
+        #     status='pending',
+        #     created_at=datetime.now()
+        # )
+        # await task.insert()
+        # logger.info(f"Task created successfully with ID: {task.id}")
+        # return task
 
-        if parsed_task:
-            # Show parsed details to user for confirmation
-            confirmation_text = (
-                f"📝 I understood your task:\n\n"
-                f"**Title:** {parsed_task.get('title', 'N/A')}\n"
-                f"**Priority:** {parsed_task.get('priority', 'medium').title()}\n"
-            )
-
-            if parsed_task.get("due_date"):
-                confirmation_text += f"**Due Date:** {parsed_task['due_date']}\n"
-            if parsed_task.get("recurrence"):
-                confirmation_text += f"**Recurrence:** {parsed_task['recurrence']}\n"
-
-            confirmation_text += "\nWould you like me to create this task? (yes/no)"
-
-            await message.answer(confirmation_text)
-
-            # Store parsed task data and raw input in FSM
-            await state.update_data(
-                raw_task_input=message.text, parsed_task_data=parsed_task
-            )
-            await state.set_state(ConversationMode.confirming_task)
-        else:
-            # Parsing failed - ask user to rephrase
-            await message.answer(
-                "❓ I couldn't understand your task. Could you please rephrase it?\n\n"
-                "Try including:\n"
-                "• What you need to do\n"
-                "• When you need to do it (optional)\n"
-                "• Any other relevant details"
-            )
+        logger.info("Task creation placeholder - implement MongoDB integration")
+        return None
 
     except Exception as e:
-        logger.error(f"Error processing NLP task: {e}", exc_info=True)
-        await message.answer(
-            "⚠️ An error occurred while processing your task. Please try again."
-        )
+        logger.error(f"Error creating task in DB: {e}", exc_info=True)
+        return None
 
 
-async def handle_task_confirmation(
-    message: types.Message, state: FSMContext, user: User
-):
+async def update_task_in_db(task_id: str, updates: Dict[str, Any]) -> Optional[Task]:
     """
-    Handle user confirmation of parsed task.
+    Update an existing task in MongoDB.
+    This is called by the LangGraph agent for conversational updates.
 
     Args:
-        message: Telegram message object
-        state: FSM context
-        user: User object
+        task_id: ID of the task to update
+        updates: Dictionary of fields to update
+
+    Returns:
+        Updated Task object or None if update failed
     """
-    if message.text is None:
-        await message.answer("Please send a text response.")
-        return
+    logger.info(f"Updating task {task_id} with: {updates}")
 
-    user_response = message.text.lower().strip()
+    try:
+        # TODO: Implement actual task update in MongoDB
+        # task = await Task.get(task_id)
+        # if task:
+        #     for key, value in updates.items():
+        #         setattr(task, key, value)
+        #     task.updated_at = datetime.now()
+        #     await task.save()
+        #     logger.info(f"Task {task_id} updated successfully")
+        #     return task
 
-    if user_response in ["yes", "y", "yeah", "sure", "ok", "okay", "confirm"]:
-        # Get stored task data
-        data = await state.get_data()
-        parsed_task_data = data.get("parsed_task_data", {})
+        logger.info("Task update placeholder - implement MongoDB integration")
+        return None
 
-        try:
-            # Create the task using the service
-            created_task = await task_service.create_task(user, parsed_task_data)
-
-            # TODO: Once task creation is implemented, show task ID or details
-            await message.answer(
-                "✅ Task created successfully!\n\n"
-                "You can send me another task anytime!"
-            )
-
-            logger.info(f"Task created successfully for user {user.telegram_id}")
-
-        except Exception as e:
-            logger.error(f"Error creating task: {e}", exc_info=True)
-            await message.answer(
-                "⚠️ An error occurred while creating your task. Please try again."
-            )
-
-        # Return to active state to accept new tasks
-        await state.set_state(ConversationMode.active)
-
-    elif user_response in ["no", "n", "nope", "cancel", "nah"]:
-        await message.answer(
-            "❌ Task cancelled. Feel free to send me a new task description!"
-        )
-        # Return to active state
-        await state.set_state(ConversationMode.active)
-
-    else:
-        await message.answer("Please respond with 'yes' to confirm or 'no' to cancel.")
+    except Exception as e:
+        logger.error(f"Error updating task: {e}", exc_info=True)
+        return None
 
 
-async def handle_task_edit(message: types.Message, state: FSMContext, user: User):
+async def get_user_tasks(user: User, filters: Optional[Dict[str, Any]] = None) -> list:
     """
-    Handle editing task details.
+    Retrieve user's tasks from MongoDB with optional filters.
+    This is called by the LangGraph agent for queries like "show my tasks for today".
 
     Args:
-        message: Telegram message object
-        state: FSM context
         user: User object
+        filters: Optional filters:
+            - status: str ('pending', 'completed', etc.)
+            - due_date: datetime or date range
+            - priority: str
+            - tags: list[str]
+
+    Returns:
+        List of Task objects
     """
-    # TODO: Implement task editing logic
-    # This will involve:
-    # 1. Showing current task details
-    # 2. Asking what to edit
-    # 3. Processing the edits
-    # 4. Updating the task in database
+    logger.info(f"Fetching tasks for user {user.telegram_id} with filters: {filters}")
 
-    await message.answer(
-        "✏️ Task editing feature coming soon!\n\n"
-        "For now, you can create a new task to replace it."
-    )
+    try:
+        # TODO: Implement actual task retrieval from MongoDB
+        # query = Task.find(Task.user_id == user.id)
+        #
+        # if filters:
+        #     if 'status' in filters:
+        #         query = query.find(Task.status == filters['status'])
+        #     if 'priority' in filters:
+        #         query = query.find(Task.priority == filters['priority'])
+        #     if 'due_date' in filters:
+        #         # Handle date range queries
+        #         pass
+        #
+        # tasks = await query.to_list()
+        # logger.info(f"Found {len(tasks)} tasks")
+        # return tasks
 
-    # Return to active state
-    await state.set_state(ConversationMode.active)
+        logger.info("Task retrieval placeholder - implement MongoDB integration")
+        return []
+
+    except Exception as e:
+        logger.error(f"Error fetching tasks: {e}", exc_info=True)
+        return []
+

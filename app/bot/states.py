@@ -6,20 +6,9 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class ConversationMode(StatesGroup):
-    """Conversation states for task management"""
+    """Simplified conversation states"""
 
-    active = State()  # User is ready and can send tasks via NLP
-    confirming_task = State()  # Waiting for yes/no confirmation on parsed task
-    editing_task = State()  # User is editing an existing task
-
-
-class ReminderFlow(StatesGroup):
-    """States for reminder management"""
-
-    awaiting_reminder_input = State()  # Waiting for reminder details
-    confirming_reminder = State()  # Confirming reminder creation
-    selecting_task = State()  # Selecting task to set reminder for
-    editing_reminder = State()  # Editing reminder time
+    active = State()  # User is in conversation mode - AI handles all interactions
 
 
 class SettingsFlow(StatesGroup):

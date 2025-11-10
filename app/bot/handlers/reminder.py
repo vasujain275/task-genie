@@ -1,162 +1,185 @@
 """
-Reminder-related message handlers.
-Handles reminder creation, confirmation, and management flows.
+Reminder-related utility functions and helpers.
+Most reminder logic is now handled by LangGraph AI agent in common.py
 """
 
-from aiogram import types
-from aiogram.fsm.context import FSMContext
-
+from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
+from app.models.reminder import Reminder
 from app.models.user import User
-from app.bot.states import ReminderFlow, ConversationMode
-from app.services import ReminderService
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# Initialize service
-reminder_service = ReminderService()
+# Default reminder time before task due date
+DEFAULT_REMINDER_MINUTES = 15
 
 
-async def process_reminder_input(message: types.Message, state: FSMContext, user: User):
+async def create_reminder_in_db(
+    user: User,
+    task_id: str,
+    reminder_data: Dict[str, Any]
+) -> Optional[Reminder]:
     """
-    Process reminder details from user input.
+    Create a reminder directly in MongoDB.
+    This is called by the LangGraph agent after parsing user input.
 
     Args:
-        message: Telegram message object
-        state: FSM context
         user: User object
-    """
-    if message.text is None:
-        await message.answer("Please send a text message with reminder details.")
-        return
+        task_id: ID of the task to set reminder for
+        reminder_data: Dictionary containing:
+            - reminder_time: datetime (required)
+            - message: str (optional, defaults to task title)
+            - recurrence: str (optional)
 
-    logger.info(
-        f"Processing reminder input from user {user.telegram_id}: {message.text}"
-    )
+    Returns:
+        Created Reminder object or None if creation failed
+    """
+    logger.info(f"Creating reminder in DB for user {user.telegram_id}, task {task_id}")
 
     try:
-        # Use the reminder service to process the input
-        parsed_reminder = await reminder_service.process_reminder_from_nlp(
-            message.text, user
-        )
+        # TODO: Implement actual reminder creation in MongoDB
+        # reminder = Reminder(
+        #     user_id=user.id,
+        #     task_id=task_id,
+        #     reminder_time=reminder_data['reminder_time'],
+        #     message=reminder_data.get('message', ''),
+        #     recurrence=reminder_data.get('recurrence'),
+        #     is_active=True,
+        #     created_at=datetime.now()
+        # )
+        # await reminder.insert()
+        # logger.info(f"Reminder created successfully with ID: {reminder.id}")
+        # return reminder
 
-        if parsed_reminder:
-            # Show parsed details to user for confirmation
-            confirmation_text = f"⏰ **Reminder Details:**\n\n"
-            confirmation_text += (
-                f"**Message:** {parsed_reminder.get('message', 'N/A')}\n"
-            )
-
-            if parsed_reminder.get("time"):
-                confirmation_text += f"**Time:** {parsed_reminder['time']}\n"
-            if parsed_reminder.get("recurrence"):
-                confirmation_text += (
-                    f"**Recurrence:** {parsed_reminder['recurrence']}\n"
-                )
-
-            confirmation_text += "\nConfirm? (yes/no)"
-
-            await message.answer(confirmation_text)
-
-            # Store parsed data in FSM
-            await state.update_data(
-                reminder_input=message.text, parsed_reminder_data=parsed_reminder
-            )
-            await state.set_state(ReminderFlow.confirming_reminder)
-        else:
-            # Parsing failed
-            await message.answer(
-                "❓ I couldn't understand your reminder. Please try again.\n\n"
-                "Example: 'Remind me to call mom at 5pm tomorrow'"
-            )
+        logger.info("Reminder creation placeholder - implement MongoDB integration")
+        return None
 
     except Exception as e:
-        logger.error(f"Error processing reminder input: {e}", exc_info=True)
-        await message.answer(
-            "⚠️ An error occurred while processing your reminder. Please try again."
-        )
+        logger.error(f"Error creating reminder in DB: {e}", exc_info=True)
+        return None
 
 
-async def handle_reminder_confirmation(
-    message: types.Message, state: FSMContext, user: User
-):
+async def update_reminder_in_db(
+    reminder_id: str,
+    updates: Dict[str, Any]
+) -> Optional[Reminder]:
     """
-    Handle reminder confirmation.
+    Update an existing reminder in MongoDB.
+    This is called by the LangGraph agent for conversational updates like:
+    - "No, remind me 30 min earlier"
+    - "Change it to 1 hour before"
 
     Args:
-        message: Telegram message object
-        state: FSM context
-        user: User object
+        reminder_id: ID of the reminder to update
+        updates: Dictionary of fields to update (e.g., reminder_time, message)
+
+    Returns:
+        Updated Reminder object or None if update failed
     """
-    if message.text is None:
-        await message.answer("Please send a text response.")
-        return
+    logger.info(f"Updating reminder {reminder_id} with: {updates}")
 
-    user_response = message.text.lower().strip()
+    try:
+        # TODO: Implement actual reminder update in MongoDB
+        # reminder = await Reminder.get(reminder_id)
+        # if reminder:
+        #     for key, value in updates.items():
+        #         setattr(reminder, key, value)
+        #     reminder.updated_at = datetime.now()
+        #     await reminder.save()
+        #     logger.info(f"Reminder {reminder_id} updated successfully")
+        #     return reminder
 
-    if user_response in ["yes", "y", "yeah", "sure", "ok", "okay", "confirm"]:
-        # Get stored reminder data
-        data = await state.get_data()
-        parsed_reminder_data = data.get("parsed_reminder_data", {})
+        logger.info("Reminder update placeholder - implement MongoDB integration")
+        return None
 
-        try:
-            # Create the reminder using the service
-            created_reminder = await reminder_service.create_reminder(
-                user, parsed_reminder_data
-            )
-
-            # TODO: Once reminder creation is implemented, schedule it
-            # if created_reminder:
-            #     await reminder_service.schedule_reminder(created_reminder)
-
-            await message.answer(
-                "✅ Reminder set successfully!\n\n"
-                "You'll be notified at the scheduled time."
-            )
-
-            logger.info(f"Reminder created successfully for user {user.telegram_id}")
-
-        except Exception as e:
-            logger.error(f"Error creating reminder: {e}", exc_info=True)
-            await message.answer(
-                "⚠️ An error occurred while setting your reminder. Please try again."
-            )
-
-        # Return to active state
-        await state.set_state(ConversationMode.active)
-    else:
-        await message.answer("❌ Reminder cancelled.")
-        # Return to active state
-        await state.set_state(ConversationMode.active)
+    except Exception as e:
+        logger.error(f"Error updating reminder: {e}", exc_info=True)
+        return None
 
 
-async def handle_reminder_selection(
-    message: types.Message, state: FSMContext, user: User
-):
+async def get_user_reminders(
+    user: User,
+    task_id: Optional[str] = None,
+    active_only: bool = True
+) -> list:
     """
-    Handle task selection for reminder.
+    Retrieve user's reminders from MongoDB.
 
     Args:
-        message: Telegram message object
-        state: FSM context
         user: User object
+        task_id: Optional task ID to filter reminders for specific task
+        active_only: If True, only return active reminders
+
+    Returns:
+        List of Reminder objects
     """
-    # TODO: Implement task selection logic
-    await message.answer(
-        "📋 Please select a task from the list above or use /start to cancel."
-    )
+    logger.info(f"Fetching reminders for user {user.telegram_id}")
+
+    try:
+        # TODO: Implement actual reminder retrieval from MongoDB
+        # query = Reminder.find(Reminder.user_id == user.id)
+        #
+        # if task_id:
+        #     query = query.find(Reminder.task_id == task_id)
+        # if active_only:
+        #     query = query.find(Reminder.is_active == True)
+        #
+        # reminders = await query.to_list()
+        # logger.info(f"Found {len(reminders)} reminders")
+        # return reminders
+
+        logger.info("Reminder retrieval placeholder - implement MongoDB integration")
+        return []
+
+    except Exception as e:
+        logger.error(f"Error fetching reminders: {e}", exc_info=True)
+        return []
 
 
-async def handle_reminder_edit(message: types.Message, state: FSMContext, user: User):
+def calculate_reminder_time(due_date: datetime, minutes_before: int = DEFAULT_REMINDER_MINUTES) -> datetime:
     """
-    Handle reminder time editing.
+    Calculate reminder time based on task due date.
 
     Args:
-        message: Telegram message object
-        state: FSM context
-        user: User object
+        due_date: Task due date/time
+        minutes_before: Minutes before due date to set reminder (default: 15)
+
+    Returns:
+        Calculated reminder datetime
     """
-    # TODO: Implement reminder editing logic
-    await message.answer(
-        "⏰ Please provide the new reminder time or use /start to cancel."
-    )
+    return due_date - timedelta(minutes=minutes_before)
+
+
+async def delete_reminder_in_db(reminder_id: str) -> bool:
+    """
+    Delete or deactivate a reminder.
+
+    Args:
+        reminder_id: ID of the reminder to delete
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(f"Deleting reminder {reminder_id}")
+
+    try:
+        # TODO: Implement actual reminder deletion in MongoDB
+        # reminder = await Reminder.get(reminder_id)
+        # if reminder:
+        #     # Option 1: Soft delete
+        #     reminder.is_active = False
+        #     await reminder.save()
+        #
+        #     # Option 2: Hard delete
+        #     # await reminder.delete()
+        #
+        #     logger.info(f"Reminder {reminder_id} deleted successfully")
+        #     return True
+
+        logger.info("Reminder deletion placeholder - implement MongoDB integration")
+        return False
+
+    except Exception as e:
+        logger.error(f"Error deleting reminder: {e}", exc_info=True)
+        return False

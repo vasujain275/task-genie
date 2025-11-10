@@ -1,24 +1,13 @@
 """
-Common message handler - Main router for non-command text messages.
-Acts as a thin routing layer, delegating to specific handlers based on FSM state.
+Common message handler - Simplified natural language message processor.
+Uses LangGraph AI agent to handle all task and reminder interactions.
 """
 
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 
 from app.models.user import User
-from app.bot.states import ConversationMode, ReminderFlow, SettingsFlow
-from app.bot.handlers.task import (
-    process_nlp_task,
-    handle_task_confirmation,
-    handle_task_edit,
-)
-from app.bot.handlers.reminder import (
-    process_reminder_input,
-    handle_reminder_confirmation,
-    handle_reminder_selection,
-    handle_reminder_edit,
-)
+from app.bot.states import ConversationMode, SettingsFlow
 from app.bot.handlers.settings import (
     handle_timezone_setting,
     handle_api_key_setting,
@@ -28,6 +17,91 @@ from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 router = Router()
+
+
+async def process_natural_language(message: types.Message, state: FSMContext, user: User):
+    """
+    Process natural language input using LangGraph AI agent.
+
+    This function will delegate to a LangGraph agent that handles:
+    - Understanding user intent (task creation, reminder setting, updates, queries)
+    - Extracting relevant entities (dates, times, priorities, etc.)
+    - Managing conversation context and follow-ups
+    - Creating/updating tasks and reminders in MongoDB
+    - Handling multi-turn conversations like "remind me 30 min earlier"
+
+    Examples of what the AI will handle:
+    - "I have to call mom today evening" -> Creates task + sets reminder 15 min before
+    - "No, remind me 30 min earlier" -> Updates reminder time
+    - "Remind me 1hr before too" -> Adds additional reminder
+    - "Change the deadline to tomorrow" -> Updates task due date
+    - "Show me my tasks for today" -> Queries and displays tasks
+
+    Args:
+        message: Telegram message object
+        state: FSM context for maintaining conversation history
+        user: User object
+    """
+    if message.text is None:
+        return
+
+    logger.info(f"Processing natural language from user {user.telegram_id}: {message.text}")
+
+    try:
+        # TODO: Implement LangGraph agent integration
+        # The agent should:
+        # 1. Maintain conversation context from FSM state
+        # 2. Process the user message with intent classification
+        # 3. Extract entities (task details, reminder times, etc.)
+        # 4. Perform database operations (create/update tasks/reminders)
+        # 5. Generate natural language responses
+        # 6. Update conversation state for follow-up interactions
+        #
+        # Example implementation structure:
+        # ---------------------------------
+        # from app.services.langgraph_service import LangGraphService
+        #
+        # langgraph_service = LangGraphService()
+        #
+        # # Get conversation history from state
+        # data = await state.get_data()
+        # conversation_history = data.get("conversation_history", [])
+        #
+        # # Process with LangGraph agent
+        # response = await langgraph_service.process_message(
+        #     user=user,
+        #     message=message.text,
+        #     conversation_history=conversation_history
+        # )
+        #
+        # # Update conversation history
+        # conversation_history.append({
+        #     "user": message.text,
+        #     "assistant": response["text"],
+        #     "timestamp": datetime.now()
+        # })
+        # await state.update_data(conversation_history=conversation_history)
+        #
+        # # Send response to user
+        # await message.answer(response["text"])
+
+        # Temporary placeholder response
+        await message.answer(
+            "🤖 LangGraph AI integration coming soon!\n\n"
+            f"I received: \"{message.text}\"\n\n"
+            "Soon I'll be able to:\n"
+            "• Create tasks from natural language\n"
+            "• Set reminders automatically (15 min before by default)\n"
+            "• Handle follow-ups like 'remind me earlier'\n"
+            "• Update tasks and reminders conversationally\n"
+            "• Remember context from our conversation"
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing natural language: {e}", exc_info=True)
+        await message.answer(
+            "⚠️ Sorry, I encountered an error processing your message. Please try again."
+        )
 
 
 @router.message(F.text & ~F.text.startswith("/"))
@@ -58,31 +132,8 @@ async def message_router(message: types.Message, state: FSMContext):
 
     # Route to appropriate handler based on state
     try:
-        # Task-related states
-        if current_state == ConversationMode.active or current_state is None:
-            await process_nlp_task(message, state, user)
-
-        elif current_state == ConversationMode.confirming_task:
-            await handle_task_confirmation(message, state, user)
-
-        elif current_state == ConversationMode.editing_task:
-            await handle_task_edit(message, state, user)
-
-        # Reminder-related states
-        elif current_state == ReminderFlow.awaiting_reminder_input:
-            await process_reminder_input(message, state, user)
-
-        elif current_state == ReminderFlow.confirming_reminder:
-            await handle_reminder_confirmation(message, state, user)
-
-        elif current_state == ReminderFlow.selecting_task:
-            await handle_reminder_selection(message, state, user)
-
-        elif current_state == ReminderFlow.editing_reminder:
-            await handle_reminder_edit(message, state, user)
-
         # Settings-related states
-        elif current_state == SettingsFlow.awaiting_timezone:
+        if current_state == SettingsFlow.awaiting_timezone:
             await handle_timezone_setting(message, state, user)
 
         elif current_state == SettingsFlow.awaiting_api_key:
@@ -90,6 +141,10 @@ async def message_router(message: types.Message, state: FSMContext):
 
         elif current_state == SettingsFlow.selecting_default_ai:
             await handle_ai_provider_selection(message, state, user)
+
+        # Active conversation mode - Let LangGraph AI handle everything
+        elif current_state == ConversationMode.active or current_state is None:
+            await process_natural_language(message, state, user)
 
         else:
             # Unknown state - clear and inform user
