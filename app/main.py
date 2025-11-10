@@ -85,8 +85,19 @@ async def health_check():
 async def webhook(request: Request):
     """Receive updates from Telegram"""
     try:
-        logger.debug("Webhook update received")
-        update = types.Update(**await request.json())
+        update_data = await request.json()
+        logger.info(f"=== Webhook update received ===")
+        logger.info(f"Update keys: {update_data.keys()}")
+
+        # Log message details if present
+        if 'message' in update_data:
+            msg = update_data['message']
+            logger.info(f"Message content_type: {msg.get('content_type', 'N/A')}")
+            logger.info(f"Message keys: {msg.keys()}")
+            if 'web_app_data' in msg:
+                logger.info(f"WEB APP DATA FOUND: {msg['web_app_data']}")
+
+        update = types.Update(**update_data)
         await request.app.state.dp.feed_webhook_update(bot=bot, update=update)
         return {"ok": True}
     except Exception as e:

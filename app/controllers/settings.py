@@ -464,7 +464,17 @@ async def settings_page():
                         statusDiv.className = 'status success show';
                         statusDiv.innerHTML = '<i data-lucide="check-circle-2" style="width: 18px; height: 18px;"></i><span>Settings saved successfully!</span>';
                         lucide.createIcons();
-                        setTimeout(() => tg.close(), 2000);
+
+                        // Send data back to bot to trigger webapp_data_handler
+                        tg.sendData(JSON.stringify({
+                            action: 'settings_saved',
+                            success: true,
+                            timezone: formData.get('timezone'),
+                            default_ai: formData.get('default_ai')
+                        }));
+
+                        // Close after a short delay
+                        setTimeout(() => tg.close(), 500);
                     } else {
                         throw new Error(result.detail || 'Failed to save settings');
                     }
