@@ -2,35 +2,71 @@
 Inline keyboard builders
 """
 
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-from app.config import settings
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
 def get_welcome_keyboard() -> InlineKeyboardMarkup:
-    """Keyboard for first time users or users missing API keys"""
-    webapp_url = settings.TELEGRAM_WEBAPP_URL
-
+    """Keyboard for first time setup"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="⚙️ Configure Settings",
-                    web_app=WebAppInfo(url=f"{webapp_url}/settings"),
+                    text="🌍 Select Timezone",
+                    callback_data="setup_timezone"
                 )
             ]
         ]
     )
 
 
-def get_settings_keyboard() -> InlineKeyboardMarkup:
-    """Keyboard with settings button for quick access"""
-    webapp_url = settings.TELEGRAM_WEBAPP_URL
+def get_timezone_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard with common timezone options"""
+    timezones = [
+        ("🇺🇸 US Eastern", "America/New_York"),
+        ("🇺🇸 US Pacific", "America/Los_Angeles"),
+        ("🇬🇧 UK/UTC", "Europe/London"),
+        ("🇪🇺 Central Europe", "Europe/Paris"),
+        ("🇮🇳 India", "Asia/Kolkata"),
+        ("🇯🇵 Japan", "Asia/Tokyo"),
+        ("🇦🇺 Australia (Sydney)", "Australia/Sydney"),
+        ("🌍 UTC", "UTC"),
+    ]
 
+    keyboard = []
+    for label, tz_data in timezones:
+        keyboard.append([InlineKeyboardButton(text=label, callback_data=f"tz_{tz_data}")])
+
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def get_settings_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard for accessing settings"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="⚙️ Settings", web_app=WebAppInfo(url=f"{webapp_url}/settings")
+                    text="⚙️ Change Timezone",
+                    callback_data="setup_timezone"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔑 Update OpenAI Key",
+                    callback_data="setup_apikey"
+                )
+            ]
+        ]
+    )
+
+
+def get_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard with cancel button"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="❌ Cancel",
+                    callback_data="cancel_setup"
                 )
             ]
         ]

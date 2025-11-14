@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     MONGO_URI: str = ""
     MONGO_DB_NAME: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
-    TELEGRAM_WEBAPP_URL: str = ""
+    WEBHOOK_URL: str = ""  # Full webhook URL (e.g., https://yourdomain.com/webhook)
     REDIS_URL: str = ""
     ENCRYPTION_KEY: str = ""
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL

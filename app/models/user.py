@@ -11,10 +11,8 @@ class User(Document):
     telegram_id: int  # Keep as telegram_id for clarity
     name: str
     username: Optional[str] = None  # Telegram username
-    gemini_key: Optional[str] = None
     openai_key: Optional[str] = None
-    default_ai: str = "gemini"
-    timezone: str = "Asia/Kolkata"
+    timezone: str = "UTC"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

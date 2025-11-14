@@ -6,7 +6,7 @@ from aiogram import Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 
 from app.config import settings
-from app.bot.handlers import start, common
+from app.bot.handlers import start, settings as settings_handler
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -28,9 +28,8 @@ def setup_dispatcher() -> Dispatcher:
         dp = Dispatcher(storage=storage)
 
         # Registering Routers
-
         dp.include_router(start.router)
-        dp.include_router(common.router)
+        dp.include_router(settings_handler.router)
 
         logger.info("Dispatcher setup complete with all routers registered")
         return dp

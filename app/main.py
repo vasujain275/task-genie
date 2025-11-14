@@ -11,7 +11,6 @@ from app.database import init_db
 from app.bot.menu import set_bot_commands_menu
 from app.bot.instance import bot
 from app.bot.dispatcher import setup_dispatcher
-from app.controllers.settings import router as settings_router
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -29,15 +28,15 @@ async def lifespan(app: FastAPI):
         await init_db(client)
         logger.info("Database initialized")
 
-        webhook_url = f"{settings.TELEGRAM_WEBAPP_URL}/webhook"
-
         # Setup dispatcher with all handlers
         dp = setup_dispatcher()
         logger.info("Dispatcher configured with handlers")
 
-        if webhook_url:
-            await bot.set_webhook(webhook_url)
-            logger.info(f"Webhook set to: {webhook_url}")
+        if settings.WEBHOOK_URL:
+            await bot.set_webhook(settings.WEBHOOK_URL)
+            logger.info(f"Webhook set to: {settings.WEBHOOK_URL}")
+        else:
+            logger.warning("No webhook URL configured - bot will not receive updates")
 
         await set_bot_commands_menu(bot)
         logger.info("Bot commands menu configured")
@@ -62,9 +61,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Task Genie", lifespan=lifespan)
-
-# Include routers
-app.include_router(settings_router)
 
 app.add_middleware(
     CORSMiddleware,

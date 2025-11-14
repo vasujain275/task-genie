@@ -95,11 +95,6 @@ task-genie/
 - `selecting_task` → Selecting task for reminder
 - `editing_reminder` → Editing reminder time
 
-### SettingsFlow
-- `awaiting_timezone` → Timezone input (webapp)
-- `awaiting_api_key` → API key input (webapp)
-- `selecting_default_ai` → AI provider selection (webapp)
-
 ## Key Design Principles
 
 ### ✅ Clean Architecture
