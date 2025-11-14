@@ -7,7 +7,10 @@ logger = setup_logger(__name__)
 
 async def set_bot_commands_menu(my_bot: Bot) -> None:
     # Register commands for Telegram bot (menu)
-    commands = [BotCommand(command="/start", description="Configure Me!")]
+    commands = [
+        BotCommand(command="/start", description="Start or reconfigure bot"),
+        BotCommand(command="/settings", description="View and update settings"),
+    ]
     try:
         await my_bot.set_my_commands(commands)
         logger.info("Bot commands menu set successfully")

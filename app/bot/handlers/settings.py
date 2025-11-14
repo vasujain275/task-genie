@@ -3,7 +3,9 @@ Settings-related message handlers.
 Handles settings configuration via inline keyboards.
 """
 
+from typing import cast
 from aiogram import Router, F
+from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
@@ -21,11 +23,41 @@ logger = setup_logger(__name__)
 router = Router()
 
 
+@router.message(Command("settings"))
+async def settings_command_handler(message: Message, state: FSMContext):
+    """Handle /settings command - show current settings and options to change them"""
+    if not message.from_user:
+        await message.answer("Error: User not found")
+        return
+
+    user = await User.get_by_telegram_id(message.from_user.id)
+    if not user:
+        await message.answer("❌ User not found. Please use /start to register.")
+        return
+
+    # Show current settings with options to update
+    api_key_status = "✅ Configured" if user.openai_key else "❌ Not configured"
+
+    await message.answer(
+        f"⚙️ **Your Current Settings**\n\n"
+        f"👤 **User:** {user.name}\n"
+        f"🌍 **Timezone:** {user.timezone}\n"
+        f"🔑 **OpenAI Key:** {api_key_status}\n\n"
+        f"Use the buttons below to update your settings:",
+        reply_markup=get_settings_keyboard(),
+    )
+
+
+
 @router.callback_query(F.data == "setup_timezone")
 async def setup_timezone_callback(callback: CallbackQuery, state: FSMContext):
     """Handle timezone setup button click"""
     await callback.answer()
-    await callback.message.edit_text(
+
+    if not callback.message:
+        return
+
+    await callback.message.edit_text(  # type: ignore
         "🌍 **Select Your Timezone**\n\n"
         "Choose the timezone where you're located. This helps me schedule your tasks and reminders correctly.",
         reply_markup=get_timezone_keyboard(),
@@ -35,8 +67,8 @@ async def setup_timezone_callback(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("tz_"))
 async def timezone_selected_callback(callback: CallbackQuery, state: FSMContext):
     """Handle timezone selection"""
-    if not callback.from_user:
-        await callback.answer("Error: User not found")
+    if not callback.from_user or not callback.message or not callback.data:
+        await callback.answer("Error: Invalid callback")
         return
 
     await callback.answer()
@@ -47,7 +79,7 @@ async def timezone_selected_callback(callback: CallbackQuery, state: FSMContext)
     # Update user's timezone
     user = await User.get_by_telegram_id(callback.from_user.id)
     if not user:
-        await callback.message.edit_text("❌ User not found. Please use /start to register.")
+        await callback.message.edit_text("❌ User not found. Please use /start to register.")  # type: ignore
         return
 
     user.timezone = timezone
@@ -57,7 +89,7 @@ async def timezone_selected_callback(callback: CallbackQuery, state: FSMContext)
 
     # Check if user still needs to setup API key
     if user.openai_key is None:
-        await callback.message.edit_text(
+        await callback.message.edit_text(  # type: ignore
             f"✅ **Timezone Set: {timezone}**\n\n"
             "🔑 **Now, let's set up your OpenAI API key**\n\n"
             "Please send me your OpenAI API key. You can get one from:\n"
@@ -68,7 +100,7 @@ async def timezone_selected_callback(callback: CallbackQuery, state: FSMContext)
         )
         await state.set_state(SetupStates.waiting_for_apikey)
     else:
-        await callback.message.edit_text(
+        await callback.message.edit_text(  # type: ignore
             f"✅ **Timezone Updated: {timezone}**\n\n"
             "Your timezone has been updated successfully!",
             reply_markup=get_settings_keyboard(),
@@ -79,7 +111,11 @@ async def timezone_selected_callback(callback: CallbackQuery, state: FSMContext)
 async def setup_apikey_callback(callback: CallbackQuery, state: FSMContext):
     """Handle API key setup button click"""
     await callback.answer()
-    await callback.message.edit_text(
+
+    if not callback.message:
+        return
+
+    await callback.message.edit_text(  # type: ignore
         "🔑 **OpenAI API Key Setup**\n\n"
         "Please send me your OpenAI API key. You can get one from:\n"
         "https://platform.openai.com/api-keys\n\n"
@@ -159,7 +195,11 @@ async def cancel_setup_callback(callback: CallbackQuery, state: FSMContext):
     """Handle cancel button click"""
     await callback.answer()
     await state.clear()
-    await callback.message.edit_text(
+
+    if not callback.message:
+        return
+
+    await callback.message.edit_text(  # type: ignore
         "❌ Setup cancelled.\n\n"
         "Use /start anytime to configure your settings."
     )
