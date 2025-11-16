@@ -5,29 +5,27 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.pyt
 *.py[oc]
-*.so
 build/
 dist/
 wheels/
 *.egg-info/
 
 # ---------------------------------
-# Log files
+# Logs
 # ---------------------------------
 logs/
 *.log
 
 # ---------------------------------
-# Virtual environments
+# Virtual environments (should NOT be copied)
 # ---------------------------------
 .venv/
 venv/
 env/
 
 # ---------------------------------
-# Environment variables / secrets
+# Environment files (do NOT bake secrets into image)
 # ---------------------------------
 .env
 *.env
@@ -41,6 +39,12 @@ env/
 pytest_cache/
 
 # ---------------------------------
+# Git metadata
+# ---------------------------------
+.git/
+.gitignore
+
+# ---------------------------------
 # Editors / IDE
 # ---------------------------------
 .vscode/
@@ -48,12 +52,17 @@ pytest_cache/
 *.swp
 
 # ---------------------------------
-# OS / Misc
+# OS files
 # ---------------------------------
 .DS_Store
 Thumbs.db
 
 # ---------------------------------
-# Git
+# Frontend (in case repo includes JS)
 # ---------------------------------
-.gitignore
+node_modules/
+
+# ---------------------------------
+# Optional: ignore docker output files
+# ---------------------------------
+docker-compose.override.yml
