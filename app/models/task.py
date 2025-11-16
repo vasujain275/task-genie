@@ -1,4 +1,16 @@
-from beanie import Document, Link, PydanticObjectId
+"""
+Task model with cascade deletion support.
+
+CASCADE DELETION:
+- When a Task is deleted: All associated Reminders are deleted
+- When a User is deleted: All Tasks (and their Reminders) are deleted
+
+The cascade is handled automatically by Beanie's BackLink relationships and DeleteRules.DELETE_LINKS.
+"""
+
+from __future__ import annotations
+
+from beanie import Document, Link, BackLink, PydanticObjectId
 from typing import Optional, Literal, TYPE_CHECKING, List, Dict, Any
 from pydantic import Field
 from datetime import datetime
@@ -6,6 +18,7 @@ from app.utils.logger import setup_logger
 
 if TYPE_CHECKING:
     from app.models.user import User
+    from app.models.reminder import Reminder
 
 logger = setup_logger(__name__)
 
@@ -21,6 +34,12 @@ class Task(Document):
     tags: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # BackLink to reminders for cascade deletion support
+    reminders: List[BackLink["Reminder"]] = Field(
+        default_factory=list,
+        json_schema_extra={"original_field": "task"}
+    )
 
     class Settings:
         name = "tasks"

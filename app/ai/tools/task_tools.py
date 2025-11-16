@@ -7,7 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId, DeleteRules
 from pymongo import DESCENDING
 
 from app.models.task import Task
@@ -303,12 +303,13 @@ async def mark_task_done(user_id: int, task_id: str) -> Dict[str, Any]:
 async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
     """
     Delete a task permanently.
+    Uses Beanie's built-in cascade deletion to automatically delete all associated reminders.
 
     Returns a dictionary with success status.
     """
     try:
-        # Get task
-        task = await Task.get(PydanticObjectId(task_id))
+        # Get task with reminders backlink fetched
+        task = await Task.get(PydanticObjectId(task_id), fetch_links=True)
         if not task:
             return {"success": False, "error": "Task not found"}
 
@@ -318,14 +319,24 @@ async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
             return {"success": False, "error": "Task not found"}
 
         task_title = task.title
-        await task.delete()
 
-        logger.info(f"Task deleted: {task_id}")
+        # Count reminders before deletion for user feedback
+        reminder_count = len(task.reminders) if hasattr(task, 'reminders') and task.reminders else 0
+
+        # Delete task with cascade deletion of all linked reminders
+        await task.delete(link_rule=DeleteRules.DELETE_LINKS)
+
+        logger.info(f"Task deleted: {task_id} with cascade deletion of {reminder_count} reminder(s)")
+
+        message = f"Task '{task_title}' deleted successfully!"
+        if reminder_count > 0:
+            message += f" ({reminder_count} associated reminder(s) also deleted)"
 
         return {
             "success": True,
             "task_id": task_id,
-            "message": f"Task '{task_title}' deleted successfully!"
+            "reminders_deleted": reminder_count,
+            "message": message
         }
 
     except Exception as e:

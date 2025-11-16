@@ -1,3 +1,15 @@
+"""
+Reminder model with cascade deletion support.
+
+CASCADE DELETION (automatic via BackLink):
+- When a Task is deleted: All its Reminders are automatically deleted
+- When a User is deleted: All Tasks are deleted, which cascades to delete all Reminders
+
+The cascade is handled automatically by Beanie's BackLink relationships defined in Task and User models.
+"""
+
+from __future__ import annotations
+
 from beanie import Document, Link, PydanticObjectId
 from pydantic import Field
 from datetime import datetime

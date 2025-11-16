@@ -11,6 +11,9 @@ async def init_db(client: AsyncIOMotorClient):
     """Initializes the database connection and sets up Beanie with the document models."""
     try:
         logger.info(f"Initializing database: {settings.MONGO_DB_NAME}")
+
+        # Beanie's init_beanie() automatically handles model initialization
+        # and resolves forward references, including BackLink relationships
         await init_beanie(
             database=client.get_database(settings.MONGO_DB_NAME),  # type: ignore
             document_models=[User, Task, Reminder],
