@@ -149,21 +149,6 @@ tail -f logs/bot.log
 pytest tests/
 ```
 
-## TODO Items
-
-- [ ] Implement Gemini API integration in `nlp_service.py`
-- [ ] Implement OpenAI API integration in `nlp_service.py`
-- [ ] Complete task creation in `task_service.py`
-- [ ] Complete reminder creation in `reminder_service.py`
-- [ ] Add task editing functionality
-- [ ] Implement reminder scheduling (APScheduler)
-- [ ] Add task listing and filtering
-- [ ] Add unit tests for services
-- [ ] Add integration tests for handlers
-- [ ] Add task search functionality
-- [ ] Implement recurring tasks
-- [ ] Add task priority management
-
 ## Contributing Guidelines
 
 1. **Follow the layer architecture** - Don't mix concerns
