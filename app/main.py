@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -77,9 +77,17 @@ async def health_check():
     return {"status": "ok"}
 
 
+async def process_update(update: types.Update, dp):
+    """Process update in background without blocking webhook response"""
+    try:
+        await dp.feed_update(bot=bot, update=update)
+    except Exception as e:
+        logger.error(f"Error processing update in background: {e}", exc_info=True)
+
+
 @app.post("/webhook")
-async def webhook(request: Request):
-    """Receive updates from Telegram"""
+async def webhook(request: Request, background_tasks: BackgroundTasks):
+    """Receive updates from Telegram and process them asynchronously"""
     try:
         update_data = await request.json()
         logger.info("=== Webhook update received ===")
@@ -94,8 +102,13 @@ async def webhook(request: Request):
                 logger.info(f"WEB APP DATA FOUND: {msg['web_app_data']}")
 
         update = types.Update(**update_data)
-        await request.app.state.dp.feed_webhook_update(bot=bot, update=update)
+
+        # Process update in background - IMMEDIATELY return to Telegram
+        background_tasks.add_task(process_update, update, request.app.state.dp)
+
+        # Return immediately - don't wait for processing to complete
         return {"ok": True}
     except Exception as e:
         logger.error(f"Error processing webhook: {e}", exc_info=True)
+        return {"ok": False}
         return {"ok": False}
