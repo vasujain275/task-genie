@@ -19,4 +19,7 @@ dependencies = [
     "langchain-core>=1.0.0",
     "langchain-google-genai>=3.0.0",
     "langchain-openai>=1.0.0",
+    "dateparser>=1.2.0",
+    "pytz>=2024.1",
+    "langgraph-checkpoint-mongodb>=0.2.2",
 ]

@@ -71,3 +71,22 @@ def get_cancel_keyboard() -> InlineKeyboardMarkup:
             ]
         ]
     )
+
+
+def get_task_confirmation_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard for task confirmation with Yes/No buttons"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Yes, create it",
+                    callback_data="confirm_task"
+                ),
+                InlineKeyboardButton(
+                    text="❌ Cancel",
+                    callback_data="cancel_task"
+                )
+            ]
+        ]
+    )
+
