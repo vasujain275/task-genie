@@ -22,6 +22,26 @@ COMPONENTS:
 4. tools node: Executes tool calls and returns results
 
 ========================================
+CONVERSATION MEMORY & CHECKPOINTING
+========================================
+
+MEMORY MANAGEMENT:
+- Uses LangGraph's built-in MemorySaver for in-memory checkpointing
+- Persists conversation history across multiple interactions
+- Thread ID format: user_{user_id}_date_{YYYY-MM-DD}
+- New thread created daily for each user (resets conversation context)
+
+MESSAGE TRIMMING:
+- Maintains last 10 messages per thread (+ system message)
+- Automatic trimming after each invocation
+- Benefits: token preservation, cost reduction, better performance
+
+THREAD LIFECYCLE:
+- Thread persists for the entire day (midnight to midnight)
+- Next day = new thread = fresh conversation context
+- Old threads remain in memory until app restart
+
+========================================
 HOW TO EXTEND
 ========================================
 
@@ -52,8 +72,9 @@ from operator import add
 
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
+from langchain_core.messages import BaseMessage, SystemMessage, AIMessage, trim_messages
 from pydantic import SecretStr
 from zoneinfo import ZoneInfo
 
@@ -63,6 +84,9 @@ from app.utils.logger import setup_logger
 from app.config import settings
 
 logger = setup_logger(__name__)
+
+# Global in-memory checkpointer shared across all agent instances
+memory_checkpointer = MemorySaver()
 
 
 # ==================== State Definition ====================
@@ -76,6 +100,60 @@ class AgentState(TypedDict):
 
 
 # ==================== Helper Functions ====================
+
+def get_thread_id(user_id: int) -> str:
+    """
+    Generate thread ID based on user_id and current date.
+    This creates a new thread for each user every day.
+
+    Format: user_{user_id}_date_{YYYY-MM-DD}
+    Example: user_123456789_date_2025-11-16
+
+    Args:
+        user_id: Telegram user ID
+
+    Returns:
+        Thread ID string
+    """
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    thread_id = f"user_{user_id}_date_{current_date}"
+    logger.debug(f"Generated thread_id: {thread_id}")
+    return thread_id
+
+
+def trim_message_history(messages: Sequence[BaseMessage]) -> list[BaseMessage]:
+    """
+    Trim message history to keep only the last 10 messages.
+    Always preserves the system message (first message).
+
+    This helps with:
+    - Token preservation
+    - Better performance
+    - Cost reduction
+
+    Args:
+        messages: List of messages in conversation
+
+    Returns:
+        Trimmed list of messages with system message preserved
+    """
+    if len(messages) <= 11:  # System message + 10 conversation messages
+        return list(messages)
+
+    # Keep system message (first) + last 10 messages
+    system_msg = messages[0] if messages and isinstance(messages[0], SystemMessage) else None
+
+    if system_msg:
+        # Trim to last 10 non-system messages
+        trimmed = [system_msg] + list(messages[-10:])
+        logger.debug(f"Trimmed messages from {len(messages)} to {len(trimmed)} (system + last 10)")
+        return trimmed
+    else:
+        # No system message, just keep last 10
+        trimmed = list(messages[-10:])
+        logger.debug(f"Trimmed messages from {len(messages)} to {len(trimmed)} (last 10)")
+        return trimmed
+
 
 def normalize_and_inject_user_id(response: AIMessage, user_id: int) -> None:
     """
@@ -250,10 +328,10 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
     # Add edge from tools back to agent
     workflow.add_edge("tools", "agent")
 
-    # Compile the graph
-    graph = workflow.compile()
+    # Compile the graph with memory checkpointer
+    graph = workflow.compile(checkpointer=memory_checkpointer)
 
-    logger.info(f"✅ Custom task agent graph created for user {user_id}")
+    logger.info(f"✅ Custom task agent graph created for user {user_id} with in-memory checkpointing")
 
     # Return a wrapper that injects system message and handles invocation
     class AgentWrapper:
@@ -266,16 +344,8 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
             self.user_name = user_name
             self.user_timezone = user_timezone
 
-        def invoke(self, input_dict):
-            """Synchronous invoke - prepends system message"""
-            return self._prepare_and_invoke(input_dict, sync=True)
-
-        async def ainvoke(self, input_dict):
-            """Async invoke - prepends system message"""
-            return await self._prepare_and_invoke(input_dict, sync=False)
-
-        def _prepare_and_invoke(self, input_dict, sync=True):
-            """Prepare state and invoke graph"""
+        def invoke(self, input_dict, config=None):
+            """Synchronous invoke - prepends system message and uses checkpointing"""
             messages = input_dict.get("messages", [])
 
             # Prepend system message if not already present
@@ -290,10 +360,58 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
                 "user_timezone": self.user_timezone
             }
 
-            # Invoke graph
-            if sync:
-                return self.graph.invoke(state)
-            else:
-                return self.graph.ainvoke(state)
+            # Generate thread_id for checkpointing
+            thread_id = get_thread_id(self.user_id)
+
+            # Build config with thread_id
+            if config is None:
+                config = {}
+            config["configurable"] = {"thread_id": thread_id}
+
+            logger.debug(f"Invoking graph with thread_id: {thread_id}")
+
+            # Invoke graph with checkpointing
+            result = self.graph.invoke(state, config)
+
+            # Trim message history after invocation to keep only last 10 messages
+            if isinstance(result, dict) and "messages" in result:
+                result["messages"] = trim_message_history(result["messages"])
+
+            return result
+
+        async def ainvoke(self, input_dict, config=None):
+            """Async invoke - prepends system message and uses checkpointing"""
+            messages = input_dict.get("messages", [])
+
+            # Prepend system message if not already present
+            if not messages or not isinstance(messages[0], SystemMessage):
+                messages = [self.system_msg] + list(messages)
+
+            # Build complete state
+            state = {
+                "messages": messages,
+                "user_id": self.user_id,
+                "user_name": self.user_name,
+                "user_timezone": self.user_timezone
+            }
+
+            # Generate thread_id for checkpointing
+            thread_id = get_thread_id(self.user_id)
+
+            # Build config with thread_id
+            if config is None:
+                config = {}
+            config["configurable"] = {"thread_id": thread_id}
+
+            logger.debug(f"Invoking graph with thread_id: {thread_id}")
+
+            # Invoke graph with checkpointing
+            result = await self.graph.ainvoke(state, config)
+
+            # Trim message history after invocation to keep only last 10 messages
+            if isinstance(result, dict) and "messages" in result:
+                result["messages"] = trim_message_history(result["messages"])
+
+            return result
 
     return AgentWrapper(graph, system_message, user_id, user_name, user_timezone)
