@@ -202,7 +202,7 @@ class Reminder(Document):
     @classmethod
     async def get_reminders_by_task(cls, task_id: PydanticObjectId) -> List["Reminder"]:
         """
-        Get all reminders for a specific task using aggregation.
+        Get all reminders for a specific task.
 
         Args:
             task_id: Task's ObjectId
@@ -211,13 +211,9 @@ class Reminder(Document):
             List of reminders for the task
         """
         try:
-            pipeline = [
-                {"$match": {"task.$id": task_id}},
-                {"$sort": {"remind_at": 1}},
-            ]
-
-            results = await cls.aggregate(pipeline, projection_model=Reminder).to_list()
-            return results
+            # Query reminders where task Link points to the given task_id
+            results = await cls.find({"task.$id": task_id}).sort("+remind_at").to_list()
+            return results  # type: ignore
         except Exception as e:
             logger.error(f"Error getting reminders by task: {e}", exc_info=True)
             return []

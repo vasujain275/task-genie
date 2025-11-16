@@ -84,8 +84,13 @@ async def handle_conversation(message: Message, state: FSMContext):
         else:
             agent_response = "I couldn't process that. Could you try again?"
 
-        # Send response
-        await message.answer(agent_response, parse_mode="Markdown")
+        # Send response - try Markdown first, fall back to plain text if it fails
+        try:
+            await message.answer(agent_response, parse_mode="Markdown")
+        except Exception as markdown_error:
+            logger.warning(f"Markdown parsing failed, sending as plain text: {markdown_error}")
+            # Send without markdown parsing
+            await message.answer(agent_response)
 
     except Exception as e:
         logger.error(f"Error in handle_conversation: {e}", exc_info=True)
