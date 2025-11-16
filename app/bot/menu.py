@@ -10,6 +10,7 @@ async def set_bot_commands_menu(my_bot: Bot) -> None:
     commands = [
         BotCommand(command="/start", description="Start or reconfigure bot"),
         BotCommand(command="/settings", description="View and update settings"),
+        BotCommand(command="/stats", description="View your task and reminders stats"),
     ]
     try:
         await my_bot.set_my_commands(commands)
