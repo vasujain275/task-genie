@@ -15,7 +15,7 @@ Manual cascade is used to avoid Pydantic circular dependency issues with BackLin
 from __future__ import annotations
 
 from beanie import Document
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from pydantic import Field
 from app.utils.logger import setup_logger
@@ -114,5 +114,5 @@ class User(Document):
             "user_id": self.telegram_id,
             "tasks_deleted": task_count,
             "reminders_deleted": reminder_count,
-            "message": f"User account deleted with {task_count} task(s) and {reminder_count} reminder(s)"
+            "message": f"User account deleted with {task_count} task(s) and {reminder_count} reminder(s)",
         }

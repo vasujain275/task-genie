@@ -74,7 +74,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import BaseMessage, SystemMessage, AIMessage, trim_messages
+from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
 from pydantic import SecretStr
 from zoneinfo import ZoneInfo
 
@@ -91,8 +91,10 @@ memory_checkpointer = MemorySaver()
 
 # ==================== State Definition ====================
 
+
 class AgentState(TypedDict):
     """State for the agent graph"""
+
     messages: Annotated[Sequence[BaseMessage], add]  # Append-only message history
     user_id: int
     user_name: str
@@ -100,6 +102,7 @@ class AgentState(TypedDict):
 
 
 # ==================== Helper Functions ====================
+
 
 def get_thread_id(user_id: int) -> str:
     """
@@ -141,17 +144,23 @@ def trim_message_history(messages: Sequence[BaseMessage]) -> list[BaseMessage]:
         return list(messages)
 
     # Keep system message (first) + last 10 messages
-    system_msg = messages[0] if messages and isinstance(messages[0], SystemMessage) else None
+    system_msg = (
+        messages[0] if messages and isinstance(messages[0], SystemMessage) else None
+    )
 
     if system_msg:
         # Trim to last 10 non-system messages
         trimmed = [system_msg] + list(messages[-10:])
-        logger.debug(f"Trimmed messages from {len(messages)} to {len(trimmed)} (system + last 10)")
+        logger.debug(
+            f"Trimmed messages from {len(messages)} to {len(trimmed)} (system + last 10)"
+        )
         return trimmed
     else:
         # No system message, just keep last 10
         trimmed = list(messages[-10:])
-        logger.debug(f"Trimmed messages from {len(messages)} to {len(trimmed)} (last 10)")
+        logger.debug(
+            f"Trimmed messages from {len(messages)} to {len(trimmed)} (last 10)"
+        )
         return trimmed
 
 
@@ -210,6 +219,7 @@ def normalize_and_inject_user_id(response: AIMessage, user_id: int) -> None:
 
 # ==================== Node Functions ====================
 
+
 def agent_node(state: AgentState, llm_with_tools) -> dict:
     """
     Main agent node - calls LLM to decide next action
@@ -262,9 +272,13 @@ def should_continue(state: AgentState) -> Literal["tools", "end"]:
     logger.debug("Routing to end - no tool calls")
     return "end"
 
+
 # ==================== Graph Builder ====================
 
-def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezone: str):
+
+def create_task_agent(
+    openai_key: str, user_id: int, user_name: str, user_timezone: str
+):
     """
     Create a custom LangGraph agent with explicit nodes and edges.
 
@@ -287,7 +301,7 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
     llm = ChatOpenAI(
         model=settings.LLM,  # type: ignore[call-arg]
         api_key=SecretStr(openai_key),  # type: ignore[call-arg]
-        temperature=0.7  # type: ignore[call-arg]
+        temperature=0.7,  # type: ignore[call-arg]
     )
 
     # Bind tools to LLM
@@ -301,7 +315,7 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
         content=AGENT_SYSTEM_PROMPT.format(
             current_datetime=current_datetime,
             user_name=user_name,
-            user_timezone=user_timezone
+            user_timezone=user_timezone,
         )
     )
 
@@ -317,12 +331,7 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
 
     # Add conditional edges
     workflow.add_conditional_edges(
-        "agent",
-        should_continue,
-        {
-            "tools": "tools",
-            "end": END
-        }
+        "agent", should_continue, {"tools": "tools", "end": END}
     )
 
     # Add edge from tools back to agent
@@ -331,7 +340,9 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
     # Compile the graph with memory checkpointer
     graph = workflow.compile(checkpointer=memory_checkpointer)
 
-    logger.info(f"✅ Custom task agent graph created for user {user_id} with in-memory checkpointing")
+    logger.info(
+        f"✅ Custom task agent graph created for user {user_id} with in-memory checkpointing"
+    )
 
     # Return a wrapper that injects system message and handles invocation
     class AgentWrapper:
@@ -357,7 +368,7 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
                 "messages": messages,
                 "user_id": self.user_id,
                 "user_name": self.user_name,
-                "user_timezone": self.user_timezone
+                "user_timezone": self.user_timezone,
             }
 
             # Generate thread_id for checkpointing
@@ -392,7 +403,7 @@ def create_task_agent(openai_key: str, user_id: int, user_name: str, user_timezo
                 "messages": messages,
                 "user_id": self.user_id,
                 "user_name": self.user_name,
-                "user_timezone": self.user_timezone
+                "user_timezone": self.user_timezone,
             }
 
             # Generate thread_id for checkpointing

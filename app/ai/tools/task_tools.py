@@ -8,7 +8,6 @@ from zoneinfo import ZoneInfo
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
-from pymongo import DESCENDING
 
 from app.models.task import Task
 from app.models.reminder import Reminder
@@ -19,6 +18,7 @@ logger = setup_logger(__name__)
 
 
 # ==================== Helper Functions ====================
+
 
 def convert_utc_to_user_timezone(dt: datetime, user_timezone: str) -> datetime:
     """
@@ -45,19 +45,26 @@ def convert_utc_to_user_timezone(dt: datetime, user_timezone: str) -> datetime:
 
 # ==================== Tool Input Schemas ====================
 
+
 class CreateTaskInput(BaseModel):
     """Input for creating a task"""
+
     user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     title: str = Field(description="Task title")
     description: Optional[str] = Field(None, description="Task description")
     task_datetime: datetime = Field(description="When the task is due/scheduled")
-    priority: Literal["low", "medium", "high"] = Field("medium", description="Task priority")
+    priority: Literal["low", "medium", "high"] = Field(
+        "medium", description="Task priority"
+    )
     tags: List[str] = Field(default_factory=list, description="Task tags/categories")
-    recurrence: Optional[str] = Field(None, description="Recurrence pattern (daily, weekly, etc.)")
+    recurrence: Optional[str] = Field(
+        None, description="Recurrence pattern (daily, weekly, etc.)"
+    )
 
 
 class CreateReminderInput(BaseModel):
     """Input for creating a reminder for a task"""
+
     user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to attach reminder to")
     remind_at: datetime = Field(description="When to send the reminder")
@@ -66,40 +73,50 @@ class CreateReminderInput(BaseModel):
 
 class EditTaskInput(BaseModel):
     """Input for editing a task"""
+
     user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to edit")
     title: Optional[str] = Field(None, description="New task title")
     description: Optional[str] = Field(None, description="New task description")
     task_datetime: Optional[datetime] = Field(None, description="New task datetime")
-    priority: Optional[Literal["low", "medium", "high"]] = Field(None, description="New priority")
+    priority: Optional[Literal["low", "medium", "high"]] = Field(
+        None, description="New priority"
+    )
     tags: Optional[List[str]] = Field(None, description="New tags")
 
 
 class MarkTaskDoneInput(BaseModel):
     """Input for marking a task as done"""
+
     user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to mark as done")
 
 
 class DeleteTaskInput(BaseModel):
     """Input for deleting a task"""
+
     user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to delete")
 
 
 class ListTasksInput(BaseModel):
     """Input for listing tasks"""
+
     user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
-    status: Optional[Literal["pending", "done"]] = Field(None, description="Filter by status")
+    status: Optional[Literal["pending", "done"]] = Field(
+        None, description="Filter by status"
+    )
     limit: int = Field(10, description="Maximum number of tasks to return")
 
 
 class GetTaskStatsInput(BaseModel):
     """Input for getting task statistics"""
+
     user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
 
 
 # ==================== Tools ====================
+
 
 @tool(args_schema=CreateTaskInput)
 async def create_task(
@@ -109,7 +126,7 @@ async def create_task(
     description: Optional[str] = None,
     priority: Literal["low", "medium", "high"] = "medium",
     tags: Optional[List[str]] = None,
-    recurrence: Optional[str] = None
+    recurrence: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Create a new task for the user.
@@ -131,7 +148,7 @@ async def create_task(
             priority=priority,
             tags=tags or [],
             recurrence=recurrence,
-            status='pending'
+            status="pending",
         )
         await task.insert()
 
@@ -145,7 +162,7 @@ async def create_task(
             "task_id": str(task.id),
             "title": title,
             "task_datetime": task_dt_user_tz.isoformat(),  # In user timezone
-            "message": f"Task '{title}' created successfully!"
+            "message": f"Task '{title}' created successfully!",
         }
 
     except Exception as e:
@@ -155,10 +172,7 @@ async def create_task(
 
 @tool(args_schema=CreateReminderInput)
 async def create_reminder(
-    user_id: int,
-    task_id: str,
-    remind_at: datetime,
-    message: Optional[str] = None
+    user_id: int, task_id: str, remind_at: datetime, message: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Create a reminder for an existing task.
@@ -182,7 +196,7 @@ async def create_reminder(
             task=task,  # type: ignore[arg-type]
             remind_at=remind_at,
             message=message,
-            sent=False
+            sent=False,
         )
         await reminder.insert()
 
@@ -196,7 +210,7 @@ async def create_reminder(
             "reminder_id": str(reminder.id),
             "task_id": task_id,
             "remind_at": remind_at_user_tz.isoformat(),  # In user timezone
-            "message": f"Reminder set for {remind_at_user_tz.strftime('%I:%M %p on %B %d')}"
+            "message": f"Reminder set for {remind_at_user_tz.strftime('%I:%M %p on %B %d')}",
         }
 
     except Exception as e:
@@ -212,7 +226,7 @@ async def edit_task(
     description: Optional[str] = None,
     task_datetime: Optional[datetime] = None,
     priority: Optional[Literal["low", "medium", "high"]] = None,
-    tags: Optional[List[str]] = None
+    tags: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Edit an existing task. Only provided fields will be updated.
@@ -257,7 +271,7 @@ async def edit_task(
             "success": True,
             "task_id": task_id,
             "updated_fields": updated_fields,
-            "message": f"Task '{task.title}' updated successfully!"
+            "message": f"Task '{task.title}' updated successfully!",
         }
 
     except Exception as e:
@@ -291,7 +305,7 @@ async def mark_task_done(user_id: int, task_id: str) -> Dict[str, Any]:
         return {
             "success": True,
             "task_id": task_id,
-            "message": f"Task '{task.title}' marked as done! 🎉"
+            "message": f"Task '{task.title}' marked as done! 🎉",
         }
 
     except Exception as e:
@@ -332,7 +346,9 @@ async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
         # Delete the task
         await task.delete()
 
-        logger.info(f"Task '{task_title}' (ID: {task_id}) deleted with {reminder_count} reminder(s) cascaded")
+        logger.info(
+            f"Task '{task_title}' (ID: {task_id}) deleted with {reminder_count} reminder(s) cascaded"
+        )
 
         message = f"Task '{task_title}' deleted successfully!"
         if reminder_count > 0:
@@ -342,17 +358,17 @@ async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
             "success": True,
             "task_id": task_id,
             "reminders_deleted": reminder_count,
-            "message": message
+            "message": message,
         }
 
     except Exception as e:
         logger.error(f"Error deleting task {task_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
+
+
 @tool(args_schema=ListTasksInput)
 async def list_tasks(
-    user_id: int,
-    status: Optional[Literal["pending", "done"]] = None,
-    limit: int = 10
+    user_id: int, status: Optional[Literal["pending", "done"]] = None, limit: int = 10
 ) -> Dict[str, Any]:
     """
     List user's tasks, optionally filtered by status.
@@ -378,25 +394,31 @@ async def list_tasks(
         task_list = []
         for task in tasks:
             # Convert task datetime to user timezone
-            task_dt_user_tz = convert_utc_to_user_timezone(task.task_datetime, user.timezone)
+            task_dt_user_tz = convert_utc_to_user_timezone(
+                task.task_datetime, user.timezone
+            )
 
-            task_list.append({
-                "id": str(task.id),
-                "title": task.title,
-                "description": task.description,
-                "task_datetime": task_dt_user_tz.isoformat(),  # In user timezone
-                "status": task.status,
-                "priority": task.priority,
-                "tags": task.tags
-            })
+            task_list.append(
+                {
+                    "id": str(task.id),
+                    "title": task.title,
+                    "description": task.description,
+                    "task_datetime": task_dt_user_tz.isoformat(),  # In user timezone
+                    "status": task.status,
+                    "priority": task.priority,
+                    "tags": task.tags,
+                }
+            )
 
-        logger.info(f"Listed {len(task_list)} tasks for user {user_id} (times in {user.timezone})")
+        logger.info(
+            f"Listed {len(task_list)} tasks for user {user_id} (times in {user.timezone})"
+        )
 
         return {
             "success": True,
             "tasks": task_list,
             "count": len(task_list),
-            "message": f"Found {len(task_list)} task(s)"
+            "message": f"Found {len(task_list)} task(s)",
         }
 
     except Exception as e:
@@ -425,7 +447,7 @@ async def get_task_statistics(user_id: int) -> Dict[str, Any]:
         return {
             "success": True,
             "statistics": stats,
-            "message": "Task statistics retrieved successfully"
+            "message": "Task statistics retrieved successfully",
         }
 
     except Exception as e:
@@ -441,5 +463,5 @@ TASK_TOOLS = [
     mark_task_done,
     delete_task,
     list_tasks,
-    get_task_statistics
+    get_task_statistics,
 ]

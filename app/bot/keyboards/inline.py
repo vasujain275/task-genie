@@ -11,8 +11,7 @@ def get_welcome_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🌍 Select Timezone",
-                    callback_data="setup_timezone"
+                    text="🌍 Select Timezone", callback_data="setup_timezone"
                 )
             ]
         ]
@@ -34,7 +33,9 @@ def get_timezone_keyboard() -> InlineKeyboardMarkup:
 
     keyboard = []
     for label, tz_data in timezones:
-        keyboard.append([InlineKeyboardButton(text=label, callback_data=f"tz_{tz_data}")])
+        keyboard.append(
+            [InlineKeyboardButton(text=label, callback_data=f"tz_{tz_data}")]
+        )
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
@@ -45,16 +46,14 @@ def get_settings_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="⚙️ Change Timezone",
-                    callback_data="setup_timezone"
+                    text="⚙️ Change Timezone", callback_data="setup_timezone"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="🔑 Update OpenAI Key",
-                    callback_data="setup_apikey"
+                    text="🔑 Update OpenAI Key", callback_data="setup_apikey"
                 )
-            ]
+            ],
         ]
     )
 
@@ -63,12 +62,7 @@ def get_cancel_keyboard() -> InlineKeyboardMarkup:
     """Keyboard with cancel button"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="❌ Cancel",
-                    callback_data="cancel_setup"
-                )
-            ]
+            [InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_setup")]
         ]
     )
 
@@ -79,14 +73,9 @@ def get_task_confirmation_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Yes, create it",
-                    callback_data="confirm_task"
+                    text="✅ Yes, create it", callback_data="confirm_task"
                 ),
-                InlineKeyboardButton(
-                    text="❌ Cancel",
-                    callback_data="cancel_task"
-                )
+                InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_task"),
             ]
         ]
     )
-

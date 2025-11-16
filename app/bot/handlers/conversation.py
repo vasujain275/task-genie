@@ -18,10 +18,7 @@ logger = setup_logger(__name__)
 router = Router()
 
 
-@router.message(
-    StateFilter(ConversationMode.active),
-    F.text & ~F.text.startswith("/")
-)
+@router.message(StateFilter(ConversationMode.active), F.text & ~F.text.startswith("/"))
 async def handle_conversation(message: Message, state: FSMContext):
     """
     Handle natural language messages when in active conversation mode.
@@ -69,13 +66,13 @@ async def handle_conversation(message: Message, state: FSMContext):
             openai_key=openai_key,  # type: ignore[arg-type]
             user_id=user.telegram_id,
             user_name=user.name,
-            user_timezone=user.timezone
+            user_timezone=user.timezone,
         )
 
         # Invoke agent with user message
-        response = await agent.ainvoke({
-            "messages": [HumanMessage(content=message.text)]
-        })
+        response = await agent.ainvoke(
+            {"messages": [HumanMessage(content=message.text)]}
+        )
 
         # Extract the last message from the agent
         if response and "messages" in response:
@@ -88,7 +85,9 @@ async def handle_conversation(message: Message, state: FSMContext):
         try:
             await message.answer(agent_response, parse_mode="Markdown")
         except Exception as markdown_error:
-            logger.warning(f"Markdown parsing failed, sending as plain text: {markdown_error}")
+            logger.warning(
+                f"Markdown parsing failed, sending as plain text: {markdown_error}"
+            )
             # Send without markdown parsing
             await message.answer(agent_response)
 

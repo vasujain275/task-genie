@@ -3,7 +3,6 @@ Settings-related message handlers.
 Handles settings configuration via inline keyboards.
 """
 
-from typing import cast
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
@@ -48,7 +47,6 @@ async def settings_command_handler(message: Message, state: FSMContext):
     )
 
 
-
 @router.callback_query(F.data == "setup_timezone")
 async def setup_timezone_callback(callback: CallbackQuery, state: FSMContext):
     """Handle timezone setup button click"""
@@ -79,7 +77,9 @@ async def timezone_selected_callback(callback: CallbackQuery, state: FSMContext)
     # Update user's timezone
     user = await User.get_by_telegram_id(callback.from_user.id)
     if not user:
-        await callback.message.edit_text("❌ User not found. Please use /start to register.")  # type: ignore
+        await callback.message.edit_text(
+            "❌ User not found. Please use /start to register."
+        )  # type: ignore
         return
 
     user.timezone = timezone
@@ -200,6 +200,5 @@ async def cancel_setup_callback(callback: CallbackQuery, state: FSMContext):
         return
 
     await callback.message.edit_text(  # type: ignore
-        "❌ Setup cancelled.\n\n"
-        "Use /start anytime to configure your settings."
+        "❌ Setup cancelled.\n\nUse /start anytime to configure your settings."
     )

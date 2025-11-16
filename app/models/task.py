@@ -10,15 +10,14 @@ Manual cascade is used to avoid Pydantic circular dependency issues with BackLin
 
 from __future__ import annotations
 
-from beanie import Document, Link, PydanticObjectId
-from typing import Optional, Literal, TYPE_CHECKING, List, Dict, Any
+from beanie import Document, Link
+from typing import Optional, Literal, TYPE_CHECKING, List
 from pydantic import Field
 from datetime import datetime
 from app.utils.logger import setup_logger
 
 if TYPE_CHECKING:
     from app.models.user import User
-    from app.models.reminder import Reminder
 
 logger = setup_logger(__name__)
 
@@ -95,4 +94,3 @@ class Task(Document):
         await task.insert()
         logger.info(f"Task created for telegram_id {telegram_id}: {task.id}")
         return task
-

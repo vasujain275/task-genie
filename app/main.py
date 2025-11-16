@@ -82,15 +82,15 @@ async def webhook(request: Request):
     """Receive updates from Telegram"""
     try:
         update_data = await request.json()
-        logger.info(f"=== Webhook update received ===")
+        logger.info("=== Webhook update received ===")
         logger.info(f"Update keys: {update_data.keys()}")
 
         # Log message details if present
-        if 'message' in update_data:
-            msg = update_data['message']
+        if "message" in update_data:
+            msg = update_data["message"]
             logger.info(f"Message content_type: {msg.get('content_type', 'N/A')}")
             logger.info(f"Message keys: {msg.keys()}")
-            if 'web_app_data' in msg:
+            if "web_app_data" in msg:
                 logger.info(f"WEB APP DATA FOUND: {msg['web_app_data']}")
 
         update = types.Update(**update_data)

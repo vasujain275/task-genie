@@ -14,4 +14,6 @@ class SetupStates(StatesGroup):
 class ConversationMode(StatesGroup):
     """Simplified conversation states - AI agent handles everything"""
 
-    active = State()  # User is in conversation mode - AI agent with tools handles all interactions
+    active = (
+        State()
+    )  # User is in conversation mode - AI agent with tools handles all interactions

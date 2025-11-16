@@ -10,7 +10,6 @@ Demonstrates MongoDB aggregation operations:
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
-from datetime import datetime, timedelta
 
 from app.models import User, Task, Reminder
 from app.utils.logger import setup_logger
@@ -104,7 +103,9 @@ async def get_task_stats(user_id) -> dict:
                 "total": total,
                 "completed": completed,
                 "pending": data.get("pending", 0),
-                "completion_rate": round((completed / total * 100), 1) if total > 0 else 0,
+                "completion_rate": round((completed / total * 100), 1)
+                if total > 0
+                else 0,
                 "high_priority": data.get("high_priority", 0),
                 "medium_priority": data.get("medium_priority", 0),
                 "low_priority": data.get("low_priority", 0),

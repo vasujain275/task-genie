@@ -13,7 +13,7 @@ from __future__ import annotations
 from beanie import Document, Link, PydanticObjectId
 from pydantic import Field
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Dict, Any, Optional
+from typing import TYPE_CHECKING, List, Optional
 from app.utils.logger import setup_logger
 
 if TYPE_CHECKING:
@@ -95,9 +95,13 @@ class Reminder(Document):
             return []
 
         # Simple query instead of aggregation
-        results = await cls.find(
-            {"user.$id": user.id, "sent": False}  # type: ignore
-        ).sort("+remind_at").to_list()
+        results = (
+            await cls.find(
+                {"user.$id": user.id, "sent": False}  # type: ignore
+            )
+            .sort("+remind_at")
+            .to_list()
+        )
         return results  # type: ignore
 
     @classmethod
@@ -111,9 +115,14 @@ class Reminder(Document):
 
         # Simple query instead of aggregation
         now = datetime.utcnow()
-        results = await cls.find(
-            {"user.$id": user.id, "sent": False, "remind_at": {"$gte": now}}  # type: ignore
-        ).sort("+remind_at").limit(limit).to_list()
+        results = (
+            await cls.find(
+                {"user.$id": user.id, "sent": False, "remind_at": {"$gte": now}}  # type: ignore
+            )
+            .sort("+remind_at")
+            .limit(limit)
+            .to_list()
+        )
         return results  # type: ignore
 
     @classmethod
@@ -143,4 +152,3 @@ class Reminder(Document):
         await reminder.insert()
         logger.info(f"Reminder created for task {task_id}: {reminder.id}")
         return reminder
-
