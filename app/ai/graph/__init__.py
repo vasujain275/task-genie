@@ -2,12 +2,9 @@
 Graph package for LangGraph workflows
 """
 
-from app.ai.graph.task_flow import (
-    build_task_creation_graph,
-    task_creation_graph
-)
+from app.ai.graph.agent import create_task_agent, AgentState
 
 __all__ = [
-    "build_task_creation_graph",
-    "task_creation_graph"
+    "create_task_agent",
+    "AgentState"
 ]

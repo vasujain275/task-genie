@@ -31,7 +31,7 @@ def setup_dispatcher() -> Dispatcher:
         # Order matters - more specific handlers should come first
         dp.include_router(start.router)
         dp.include_router(settings_handler.router)
-        dp.include_router(conversation.router)  # Natural language handler
+        dp.include_router(conversation.router)  # Conversational AI agent
 
         logger.info("Dispatcher setup complete with all routers registered")
         return dp

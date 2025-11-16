@@ -1,13 +1,11 @@
 """
-AI module for natural language processing and task parsing
+AI module for natural language processing and task management
 """
 
-from app.ai.nlp_service import NLPService, get_nlp_service
-from app.ai.checkpointer import get_checkpointer, get_conversation_id
+from app.ai.graph.agent import create_task_agent
+from app.ai.tools.task_tools import TASK_TOOLS
 
 __all__ = [
-    "NLPService",
-    "get_nlp_service",
-    "get_checkpointer",
-    "get_conversation_id"
+    "create_task_agent",
+    "TASK_TOOLS"
 ]

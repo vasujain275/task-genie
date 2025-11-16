@@ -12,15 +12,6 @@ class SetupStates(StatesGroup):
 
 
 class ConversationMode(StatesGroup):
-    """Simplified conversation states"""
+    """Simplified conversation states - AI agent handles everything"""
 
-    active = State()  # User is in conversation mode - AI handles all interactions
-
-
-class TaskCreationStates(StatesGroup):
-    """States for natural language task creation flow"""
-
-    waiting_for_nl_input = State()  # Waiting for natural language task description
-    confirming_task = State()  # Asking user to confirm parsed task details
-    editing_task_details = State()  # User wants to modify task details
-    processing = State()  # Processing and saving the task
+    active = State()  # User is in conversation mode - AI agent with tools handles all interactions

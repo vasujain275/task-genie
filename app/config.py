@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = ""  # For aiogram FSM storage
     ENCRYPTION_KEY: str = ""
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    LLM: str = "gpt-5-mini"
 
     class Config:
         env_file = ".env"

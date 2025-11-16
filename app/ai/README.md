@@ -1,53 +1,102 @@
 # AI Module - Natural Language Processing
 
-This module handles natural language processing for task creation using LangGraph and OpenAI.
+This module handles natural language processing for task management using a **custom LangGraph agent**.
 
 ## Architecture
 
 ```
 app/ai/
-├── checkpointer.py      # MongoDB checkpointing with daily isolation
-├── nlp_service.py       # Main NLP service interface
-├── state.py             # TypedDict state definitions
 ├── graph/
-│   └── task_flow.py     # LangGraph workflow definition
+│   └── agent.py         # Custom LangGraph workflow (nodes, edges, state)
 ├── prompts/
-│   └── system.py        # System prompts for OpenAI
+│   └── system.py        # System prompts for the agent
 └── tools/
-    └── parser.py        # NLP parsing utilities
+    └── task_tools.py    # LangChain tools for task operations
 ```
 
-## Key Features
+## Custom LangGraph Agent
 
-### 1. MongoDB Checkpointing
+We use a **custom graph implementation** instead of prebuilt agents for:
+- ✅ Full control over agent behavior
+- ✅ Easy to understand and debug
+- ✅ Simple to extend with new nodes
+- ✅ Clear flow visualization
+- ✅ Maintainable codebase
 
-Uses **AsyncMongoDBSaver** from LangGraph for conversation state persistence:
+### Graph Structure
 
-- **Daily Isolation**: Each user gets a fresh conversation context every day
-- **Thread ID Format**: `user_{user_id}_date_{YYYY-MM-DD}`
-- **Auto Cleanup**: 24-hour TTL on checkpoints
-- **Collections**:
-  - `langgraph_checkpoints` - conversation state
-  - `langgraph_writes` - intermediate writes
+```
+START
+  ↓
+[agent] ←─────┐
+  ↓           │
+[should_continue?]
+  ├─→ tools ──┘
+  └─→ END
+```
 
-### 2. Daily Conversation Isolation
+### Node Details
+
+1. **`agent` node**:
+   - Calls LLM with tools bound
+   - LLM decides whether to respond directly or call tools
+   - Returns AIMessage (with or without tool calls)
+
+2. **`should_continue` function**:
+   - Routes based on last message
+   - If tool calls present → route to `tools` node
+   - If no tool calls → route to `END`
+
+3. **`tools` node**:
+   - Executes tool calls in parallel
+   - Returns ToolMessage results
+   - Loops back to `agent` node
+
+### State Definition
 
 ```python
-from app.ai import get_conversation_id
-
-# Each day gets a new thread ID
-thread_id = get_conversation_id(user_id=12345)
-# Returns: "user_12345_date_2025-11-16"
+class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], add]  # Append-only
+    user_id: int
+    user_name: str
+    user_timezone: str
 ```
 
-This ensures:
-- Fresh context each day
-- No context pollution between days
-- Automatic cleanup of old conversations
+## How It Works
 
-### 3. LangGraph Workflow
+### 1. User sends message
 
-Two-node graph for task creation:
+```python
+agent = create_task_agent(
+    openai_key="sk-...",
+    user_id=123,
+    user_name="John",
+    user_timezone="America/New_York"
+)
+
+response = await agent.ainvoke({
+    "messages": [HumanMessage(content="Remind me to call mom tomorrow at 5pm")]
+})
+```
+
+### 2. Agent flow
+
+1. System message is prepended (with current time, user info)
+2. Graph starts at `agent` node
+3. LLM sees the tools available and user message
+4. LLM decides to call `create_task` tool
+5. Router sends to `tools` node
+6. Tool executes (creates task in DB)
+7. Returns to `agent` node with tool result
+8. LLM generates friendly confirmation message
+9. No more tool calls → ends
+
+### 3. Response
+
+```python
+"✅ I've set a reminder to call mom tomorrow at 5:00 PM!
+I'll remind you 15 minutes before."
+```
 1. **parse_input_node**: Extracts task/reminder data from natural language
 2. **create_task_node**: Saves to database after user confirmation
 
