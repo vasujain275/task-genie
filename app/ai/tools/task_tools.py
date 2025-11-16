@@ -7,7 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
-from beanie import PydanticObjectId, DeleteRules
+from beanie import PydanticObjectId
 from pymongo import DESCENDING
 
 from app.models.task import Task
@@ -302,14 +302,16 @@ async def mark_task_done(user_id: int, task_id: str) -> Dict[str, Any]:
 @tool(args_schema=DeleteTaskInput)
 async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
     """
-    Delete a task permanently.
-    Uses Beanie's built-in cascade deletion to automatically delete all associated reminders.
+    Delete a task permanently with manual cascade deletion of reminders.
+
+    Manually deletes all associated reminders before deleting the task
+    to ensure no orphaned data.
 
     Returns a dictionary with success status.
     """
     try:
-        # Get task with reminders backlink fetched
-        task = await Task.get(PydanticObjectId(task_id), fetch_links=True)
+        # Get task
+        task = await Task.get(PydanticObjectId(task_id))
         if not task:
             return {"success": False, "error": "Task not found"}
 
@@ -320,13 +322,17 @@ async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
 
         task_title = task.title
 
-        # Count reminders before deletion for user feedback
-        reminder_count = len(task.reminders) if hasattr(task, 'reminders') and task.reminders else 0
+        # Manually cascade delete: Find and delete all reminders for this task
+        reminders = await Reminder.get_reminders_by_task(PydanticObjectId(task_id))
+        reminder_count = len(reminders)
 
-        # Delete task with cascade deletion of all linked reminders
-        await task.delete(link_rule=DeleteRules.DELETE_LINKS)
+        for reminder in reminders:
+            await reminder.delete()
 
-        logger.info(f"Task deleted: {task_id} with cascade deletion of {reminder_count} reminder(s)")
+        # Delete the task
+        await task.delete()
+
+        logger.info(f"Task '{task_title}' (ID: {task_id}) deleted with {reminder_count} reminder(s) cascaded")
 
         message = f"Task '{task_title}' deleted successfully!"
         if reminder_count > 0:
@@ -340,10 +346,8 @@ async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Error deleting task: {e}", exc_info=True)
+        logger.error(f"Error deleting task {task_id}: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
-
-
 @tool(args_schema=ListTasksInput)
 async def list_tasks(
     user_id: int,
