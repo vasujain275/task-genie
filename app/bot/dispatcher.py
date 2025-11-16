@@ -6,7 +6,7 @@ from aiogram import Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 
 from app.config import settings
-from app.bot.handlers import start, settings as settings_handler, conversation
+from app.bot.handlers import start, settings as settings_handler, conversation, stats
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -30,6 +30,7 @@ def setup_dispatcher() -> Dispatcher:
         # Registering Routers
         # Order matters - more specific handlers should come first
         dp.include_router(start.router)
+        dp.include_router(stats.router)
         dp.include_router(settings_handler.router)
         dp.include_router(conversation.router)  # Conversational AI agent
 

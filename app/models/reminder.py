@@ -62,142 +62,7 @@ class Reminder(Document):
         logger.info(f"Reminder rescheduled: {self.id} to {new_time}")
         return self
 
-    # ==================== Aggregation Pipeline Methods ====================
-
-    @classmethod
-    async def get_pending_reminders(cls, user_id: PydanticObjectId) -> List["Reminder"]:
-        """
-        Get all pending (unsent) reminders for a user using aggregation.
-
-        Args:
-            user_id: User's ObjectId
-
-        Returns:
-            List of pending reminders sorted by remind_at
-        """
-        try:
-            pipeline = [
-                {
-                    "$match": {
-                        "user.$id": user_id,
-                        "sent": False,
-                    }
-                },
-                {"$sort": {"remind_at": 1}},
-            ]
-
-            results = await cls.aggregate(pipeline, projection_model=Reminder).to_list()
-            return results
-        except Exception as e:
-            logger.error(f"Error getting pending reminders: {e}", exc_info=True)
-            return []
-
-    @classmethod
-    async def get_due_reminders(cls, before_time: Optional[datetime] = None) -> List["Reminder"]:
-        """
-        Get all reminders that are due (remind_at <= current time) and not sent.
-
-        Args:
-            before_time: Optional cutoff time, defaults to now
-
-        Returns:
-            List of due reminders
-        """
-        try:
-            cutoff = before_time or datetime.utcnow()
-            pipeline = [
-                {
-                    "$match": {
-                        "sent": False,
-                        "remind_at": {"$lte": cutoff},
-                    }
-                },
-                {"$sort": {"remind_at": 1}},
-            ]
-
-            results = await cls.aggregate(pipeline, projection_model=Reminder).to_list()
-            logger.info(f"Found {len(results)} due reminders")
-            return results
-        except Exception as e:
-            logger.error(f"Error getting due reminders: {e}", exc_info=True)
-            return []
-
-    @classmethod
-    async def get_upcoming_reminders(
-        cls,
-        user_id: PydanticObjectId,
-        limit: int = 5,
-    ) -> List["Reminder"]:
-        """
-        Get upcoming reminders for a user using aggregation.
-
-        Args:
-            user_id: User's ObjectId
-            limit: Maximum number of reminders to return
-
-        Returns:
-            List of upcoming reminders
-        """
-        try:
-            now = datetime.utcnow()
-            pipeline = [
-                {
-                    "$match": {
-                        "user.$id": user_id,
-                        "sent": False,
-                        "remind_at": {"$gte": now},
-                    }
-                },
-                {"$sort": {"remind_at": 1}},
-                {"$limit": limit},
-            ]
-
-            results = await cls.aggregate(pipeline, projection_model=Reminder).to_list()
-            return results
-        except Exception as e:
-            logger.error(f"Error getting upcoming reminders: {e}", exc_info=True)
-            return []
-
-    @classmethod
-    async def get_reminder_statistics(cls, user_id: PydanticObjectId) -> Dict[str, Any]:
-        """
-        Get reminder statistics for a user using aggregation pipeline.
-
-        Returns:
-            Dictionary with reminder statistics
-        """
-        try:
-            pipeline = [
-                {"$match": {"user.$id": user_id}},
-                {
-                    "$group": {
-                        "_id": "$sent",
-                        "count": {"$sum": 1},
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": None,
-                        "total": {"$sum": "$count"},
-                        "by_status": {
-                            "$push": {
-                                "sent": "$_id",
-                                "count": "$count",
-                            }
-                        },
-                    }
-                },
-            ]
-
-            result = await cls.aggregate(pipeline).to_list()
-
-            if result:
-                return result[0]
-
-            return {"total": 0, "by_status": []}
-        except Exception as e:
-            logger.error(f"Error getting reminder statistics: {e}", exc_info=True)
-            return {"total": 0, "by_status": []}
+    # ==================== Query Methods ====================
 
     @classmethod
     async def get_reminders_by_task(cls, task_id: PydanticObjectId) -> List["Reminder"]:
@@ -218,41 +83,6 @@ class Reminder(Document):
             logger.error(f"Error getting reminders by task: {e}", exc_info=True)
             return []
 
-    @classmethod
-    async def get_reminders_by_date_range(
-        cls,
-        user_id: PydanticObjectId,
-        start_date: datetime,
-        end_date: datetime,
-    ) -> List["Reminder"]:
-        """
-        Get reminders within a date range using aggregation.
-
-        Args:
-            user_id: User's ObjectId
-            start_date: Start of date range
-            end_date: End of date range
-
-        Returns:
-            List of reminders within the date range
-        """
-        try:
-            pipeline = [
-                {
-                    "$match": {
-                        "user.$id": user_id,
-                        "remind_at": {"$gte": start_date, "$lte": end_date},
-                    }
-                },
-                {"$sort": {"remind_at": 1}},
-            ]
-
-            results = await cls.aggregate(pipeline, projection_model=Reminder).to_list()
-            return results
-        except Exception as e:
-            logger.error(f"Error getting reminders by date range: {e}", exc_info=True)
-            return []
-
     # ==================== Convenience Methods for Telegram ID ====================
 
     @classmethod
@@ -264,7 +94,11 @@ class Reminder(Document):
         if not user:
             return []
 
-        return await cls.get_pending_reminders(user.id)  # type: ignore
+        # Simple query instead of aggregation
+        results = await cls.find(
+            {"user.$id": user.id, "sent": False}  # type: ignore
+        ).sort("+remind_at").to_list()
+        return results  # type: ignore
 
     @classmethod
     async def get_upcoming(cls, telegram_id: int, limit: int = 5) -> List["Reminder"]:
@@ -275,7 +109,12 @@ class Reminder(Document):
         if not user:
             return []
 
-        return await cls.get_upcoming_reminders(user.id, limit)  # type: ignore
+        # Simple query instead of aggregation
+        now = datetime.utcnow()
+        results = await cls.find(
+            {"user.$id": user.id, "sent": False, "remind_at": {"$gte": now}}  # type: ignore
+        ).sort("+remind_at").limit(limit).to_list()
+        return results  # type: ignore
 
     @classmethod
     async def create_for_task(
