@@ -90,42 +90,40 @@ Task Genie follows a clean, modular architecture built with modern Python tools:
                     ▼
 ┌─────────────────────────────────────────────────────────┐
 │              LangGraph AI Agent                         │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │  Custom Graph Workflow:                         │   │
-│  │  START → agent → [decide] → tools → agent      │   │
-│  │                      ↓                          │   │
-│  │                     END                         │   │
-│  └─────────────────────────────────────────────────┘   │
-│  • Conversation Memory (MongoDB Checkpointing)         │
-│  • Message Trimming (last 10 messages)                 │
-│  • Daily Thread Reset                                  │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │  Custom Graph Workflow:                         │    │
+│  │  START → agent → [decide] → tools → agent       │    │
+│  │                      ↓                          │    │
+│  │                     END                         │    │
+│  └─────────────────────────────────────────────────┘    │
+│  • Conversation Memory (MongoDB Checkpointing)          │
+│  • Message Trimming (last 10 messages)                  │
+│  • Daily Thread Reset                                   │
 └───────────────────┬─────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────────────────────┐
 │                   LangChain Tools                       │
-│  • create_task     • edit_task                         │
-│  • list_tasks      • mark_task_done                    │
-│  • delete_task     • create_reminder                   │
-│  • get_task_stats                                      │
+│  • create_task     • edit_task                          │
+│  • list_tasks      • mark_task_done                     │
+│  • delete_task     • create_reminder                    │
+│  • get_task_stats                                       │
 └───────────────────┬─────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Beanie ODM Models                          │
-│  • User (profiles, settings, encrypted keys)           │
-│  • Task (title, datetime, priority, tags)              │
-│  • Reminder (remind_at, message)                       │
+│  • User (profiles, settings, encrypted keys)            │
+│  • Task (title, datetime, priority, tags)               │
+│  • Reminder (remind_at, message)                        │
 └───────────────────┬─────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────────────────────┐
 │                   MongoDB                               │
-│  • users                                               │
-│  • tasks                                               │
-│  • reminders                                           │
-│  • langgraph_checkpoints (24h TTL)                    │
-│  • langgraph_writes (24h TTL)                         │
+│  • users                                                │
+│  • tasks                                                │
+│  • reminders                                            │
 └─────────────────────────────────────────────────────────┘
 ```
 
