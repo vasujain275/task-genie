@@ -4,6 +4,7 @@ Task management tools for the LLM agent
 
 from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
@@ -17,11 +18,36 @@ from app.utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
+# ==================== Helper Functions ====================
+
+def convert_utc_to_user_timezone(dt: datetime, user_timezone: str) -> datetime:
+    """
+    Convert UTC datetime to user's timezone.
+
+    Args:
+        dt: Datetime in UTC (naive or aware)
+        user_timezone: User's timezone (e.g., "Asia/Kolkata")
+
+    Returns:
+        Datetime in user's timezone (aware)
+    """
+    if dt is None:
+        return None  # type: ignore[return-value]
+
+    # If datetime is naive, assume it's UTC
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+
+    # Convert to user timezone
+    user_tz = ZoneInfo(user_timezone)
+    return dt.astimezone(user_tz)
+
+
 # ==================== Tool Input Schemas ====================
 
 class CreateTaskInput(BaseModel):
     """Input for creating a task"""
-    user_id: int = Field(description="Telegram user ID")
+    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     title: str = Field(description="Task title")
     description: Optional[str] = Field(None, description="Task description")
     task_datetime: datetime = Field(description="When the task is due/scheduled")
@@ -32,7 +58,7 @@ class CreateTaskInput(BaseModel):
 
 class CreateReminderInput(BaseModel):
     """Input for creating a reminder for a task"""
-    user_id: int = Field(description="Telegram user ID")
+    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to attach reminder to")
     remind_at: datetime = Field(description="When to send the reminder")
     message: Optional[str] = Field(None, description="Custom reminder message")
@@ -40,7 +66,7 @@ class CreateReminderInput(BaseModel):
 
 class EditTaskInput(BaseModel):
     """Input for editing a task"""
-    user_id: int = Field(description="Telegram user ID")
+    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to edit")
     title: Optional[str] = Field(None, description="New task title")
     description: Optional[str] = Field(None, description="New task description")
@@ -51,26 +77,26 @@ class EditTaskInput(BaseModel):
 
 class MarkTaskDoneInput(BaseModel):
     """Input for marking a task as done"""
-    user_id: int = Field(description="Telegram user ID")
+    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to mark as done")
 
 
 class DeleteTaskInput(BaseModel):
     """Input for deleting a task"""
-    user_id: int = Field(description="Telegram user ID")
+    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     task_id: str = Field(description="Task ID to delete")
 
 
 class ListTasksInput(BaseModel):
     """Input for listing tasks"""
-    user_id: int = Field(description="Telegram user ID")
+    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
     status: Optional[Literal["pending", "done"]] = Field(None, description="Filter by status")
     limit: int = Field(10, description="Maximum number of tasks to return")
 
 
 class GetTaskStatsInput(BaseModel):
     """Input for getting task statistics"""
-    user_id: int = Field(description="Telegram user ID")
+    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
 
 
 # ==================== Tools ====================
@@ -111,11 +137,14 @@ async def create_task(
 
         logger.info(f"Task created: {task.id} - {title}")
 
+        # Convert datetime to user timezone for response
+        task_dt_user_tz = convert_utc_to_user_timezone(task_datetime, user.timezone)
+
         return {
             "success": True,
             "task_id": str(task.id),
             "title": title,
-            "task_datetime": task_datetime.isoformat(),
+            "task_datetime": task_dt_user_tz.isoformat(),  # In user timezone
             "message": f"Task '{title}' created successfully!"
         }
 
@@ -159,12 +188,15 @@ async def create_reminder(
 
         logger.info(f"Reminder created: {reminder.id} for task {task_id}")
 
+        # Convert remind_at to user timezone for response
+        remind_at_user_tz = convert_utc_to_user_timezone(remind_at, user.timezone)
+
         return {
             "success": True,
             "reminder_id": str(reminder.id),
             "task_id": task_id,
-            "remind_at": remind_at.isoformat(),
-            "message": f"Reminder set for {remind_at.strftime('%I:%M %p on %B %d')}"
+            "remind_at": remind_at_user_tz.isoformat(),  # In user timezone
+            "message": f"Reminder set for {remind_at_user_tz.strftime('%I:%M %p on %B %d')}"
         }
 
     except Exception as e:
@@ -310,7 +342,7 @@ async def list_tasks(
     """
     List user's tasks, optionally filtered by status.
 
-    Returns a list of tasks with their details.
+    Returns a list of tasks with their details (datetimes in user's timezone).
     """
     try:
         # Get user
@@ -327,20 +359,23 @@ async def list_tasks(
         # Get tasks sorted by datetime descending
         tasks = await query.sort("-task_datetime").limit(limit).to_list()
 
-        # Format tasks
+        # Format tasks - convert datetimes to user timezone
         task_list = []
         for task in tasks:
+            # Convert task datetime to user timezone
+            task_dt_user_tz = convert_utc_to_user_timezone(task.task_datetime, user.timezone)
+
             task_list.append({
                 "id": str(task.id),
                 "title": task.title,
                 "description": task.description,
-                "task_datetime": task.task_datetime.isoformat(),
+                "task_datetime": task_dt_user_tz.isoformat(),  # In user timezone
                 "status": task.status,
                 "priority": task.priority,
                 "tags": task.tags
             })
 
-        logger.info(f"Listed {len(task_list)} tasks for user {user_id}")
+        logger.info(f"Listed {len(task_list)} tasks for user {user_id} (times in {user.timezone})")
 
         return {
             "success": True,

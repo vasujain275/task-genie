@@ -22,4 +22,5 @@ dependencies = [
     "dateparser>=1.2.0",
     "pytz>=2024.1",
     "langgraph-checkpoint-mongodb>=0.2.2",
+    "langsmith>=0.4.43",
 ]
