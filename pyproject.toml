@@ -23,10 +23,12 @@ dependencies = [
     "pytz>=2024.1",
     "langgraph-checkpoint-mongodb>=0.2.2",
     "langsmith>=0.4.43",
+    "gunicorn>=23.0.0",
 ]
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.4.0",
     "ruff>=0.14.5",
 ]
 
