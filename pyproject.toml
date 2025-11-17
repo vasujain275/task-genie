@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aiogram==3.22.0",
+    "apscheduler>=3.10.4",
     "beanie>=2.0.0",
     "black>=25.9.0",
     "cryptography>=46.0.3",
@@ -27,10 +28,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.4.0",
-    "ruff>=0.14.5",
-]
+dev = ["pre-commit>=4.4.0", "ruff>=0.14.5"]
 
 [tool.ruff]
 line-length = 88

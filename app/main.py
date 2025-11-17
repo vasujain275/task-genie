@@ -11,6 +11,10 @@ from app.database import init_db
 from app.bot.menu import set_bot_commands_menu
 from app.bot.instance import bot
 from app.bot.dispatcher import setup_dispatcher
+from app.services.reminder_scheduler import (
+    start_reminder_scheduler,
+    stop_reminder_scheduler,
+)
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -41,6 +45,10 @@ async def lifespan(app: FastAPI):
         await set_bot_commands_menu(bot)
         logger.info("Bot commands menu configured")
 
+        # Start reminder scheduler
+        start_reminder_scheduler()
+        logger.info("Reminder scheduler started")
+
         logger.info("✅ Bot initialized successfully with Redis FSM storage")
 
         # Store dp in app state for access in webhook handler
@@ -50,6 +58,10 @@ async def lifespan(app: FastAPI):
 
         # ========= SHUTDOWN =========
         logger.info("Shutting down application...")
+
+        # Stop reminder scheduler
+        stop_reminder_scheduler()
+
         await bot.delete_webhook()
         await bot.session.close()
         client.close()
@@ -110,5 +122,4 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
         return {"ok": True}
     except Exception as e:
         logger.error(f"Error processing webhook: {e}", exc_info=True)
-        return {"ok": False}
         return {"ok": False}
