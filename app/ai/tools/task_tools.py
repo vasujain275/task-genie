@@ -49,36 +49,32 @@ def convert_utc_to_user_timezone(dt: datetime, user_timezone: str) -> datetime:
 class CreateTaskInput(BaseModel):
     """Input for creating a task"""
 
-    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
+    user_id: int = Field(description="User ID (auto-injected)")
     title: str = Field(description="Task title")
     description: Optional[str] = Field(None, description="Task description")
-    task_datetime: datetime = Field(description="When the task is due/scheduled")
-    priority: Literal["low", "medium", "high"] = Field(
-        "medium", description="Task priority"
-    )
-    tags: List[str] = Field(default_factory=list, description="Task tags/categories")
-    recurrence: Optional[str] = Field(
-        None, description="Recurrence pattern (daily, weekly, etc.)"
-    )
+    task_datetime: datetime = Field(description="When task is due")
+    priority: Literal["low", "medium", "high"] = Field("medium", description="Priority")
+    tags: List[str] = Field(default_factory=list, description="Tags/categories")
+    recurrence: Optional[str] = Field(None, description="Recurrence pattern")
 
 
 class CreateReminderInput(BaseModel):
     """Input for creating a reminder for a task"""
 
-    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
-    task_id: str = Field(description="Task ID to attach reminder to")
-    remind_at: datetime = Field(description="When to send the reminder")
-    message: Optional[str] = Field(None, description="Custom reminder message")
+    user_id: int = Field(description="User ID (auto-injected)")
+    task_id: str = Field(description="Task ID")
+    remind_at: datetime = Field(description="When to remind")
+    message: Optional[str] = Field(None, description="Custom message")
 
 
 class EditTaskInput(BaseModel):
     """Input for editing a task"""
 
-    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
-    task_id: str = Field(description="Task ID to edit")
-    title: Optional[str] = Field(None, description="New task title")
-    description: Optional[str] = Field(None, description="New task description")
-    task_datetime: Optional[datetime] = Field(None, description="New task datetime")
+    user_id: int = Field(description="User ID (auto-injected)")
+    task_id: str = Field(description="Task ID")
+    title: Optional[str] = Field(None, description="New title")
+    description: Optional[str] = Field(None, description="New description")
+    task_datetime: Optional[datetime] = Field(None, description="New datetime")
     priority: Optional[Literal["low", "medium", "high"]] = Field(
         None, description="New priority"
     )
@@ -88,31 +84,31 @@ class EditTaskInput(BaseModel):
 class MarkTaskDoneInput(BaseModel):
     """Input for marking a task as done"""
 
-    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
-    task_id: str = Field(description="Task ID to mark as done")
+    user_id: int = Field(description="User ID (auto-injected)")
+    task_id: str = Field(description="Task ID")
 
 
 class DeleteTaskInput(BaseModel):
     """Input for deleting a task"""
 
-    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
-    task_id: str = Field(description="Task ID to delete")
+    user_id: int = Field(description="User ID (auto-injected)")
+    task_id: str = Field(description="Task ID")
 
 
 class ListTasksInput(BaseModel):
     """Input for listing tasks"""
 
-    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
+    user_id: int = Field(description="User ID (auto-injected)")
     status: Optional[Literal["pending", "done"]] = Field(
         None, description="Filter by status"
     )
-    limit: int = Field(10, description="Maximum number of tasks to return")
+    limit: int = Field(10, description="Max results")
 
 
 class GetTaskStatsInput(BaseModel):
     """Input for getting task statistics"""
 
-    user_id: int = Field(description="Telegram user ID (auto-injected, do not specify)")
+    user_id: int = Field(description="User ID (auto-injected)")
 
 
 # ==================== Tools ====================
@@ -128,11 +124,7 @@ async def create_task(
     tags: Optional[List[str]] = None,
     recurrence: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Create a new task for the user.
-
-    Returns a dictionary with task_id and success status.
-    """
+    """Create a new task. Returns task_id and success status."""
     try:
         # Get user
         user = await User.get_by_telegram_id(user_id)
@@ -162,7 +154,7 @@ async def create_task(
             "task_id": str(task.id),
             "title": title,
             "task_datetime": task_dt_user_tz.isoformat(),  # In user timezone
-            "message": f"Task '{title}' created successfully!",
+            "message": f"✓ '{title}' created",
         }
 
     except Exception as e:
@@ -174,11 +166,7 @@ async def create_task(
 async def create_reminder(
     user_id: int, task_id: str, remind_at: datetime, message: Optional[str] = None
 ) -> Dict[str, Any]:
-    """
-    Create a reminder for an existing task.
-
-    Returns a dictionary with reminder_id and success status.
-    """
+    """Create a reminder for a task. Returns reminder_id and success status."""
     try:
         # Get user
         user = await User.get_by_telegram_id(user_id)
@@ -210,7 +198,7 @@ async def create_reminder(
             "reminder_id": str(reminder.id),
             "task_id": task_id,
             "remind_at": remind_at_user_tz.isoformat(),  # In user timezone
-            "message": f"Reminder set for {remind_at_user_tz.strftime('%I:%M %p on %B %d')}",
+            "message": "✓ Reminder set",
         }
 
     except Exception as e:
@@ -228,11 +216,7 @@ async def edit_task(
     priority: Optional[Literal["low", "medium", "high"]] = None,
     tags: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """
-    Edit an existing task. Only provided fields will be updated.
-
-    Returns a dictionary with success status and updated fields.
-    """
+    """Edit a task. Only provided fields are updated. Returns success status."""
     try:
         # Get task
         task = await Task.get(PydanticObjectId(task_id))
@@ -271,7 +255,7 @@ async def edit_task(
             "success": True,
             "task_id": task_id,
             "updated_fields": updated_fields,
-            "message": f"Task '{task.title}' updated successfully!",
+            "message": "✓ Updated",
         }
 
     except Exception as e:
@@ -281,11 +265,7 @@ async def edit_task(
 
 @tool(args_schema=MarkTaskDoneInput)
 async def mark_task_done(user_id: int, task_id: str) -> Dict[str, Any]:
-    """
-    Mark a task as done/completed.
-
-    Returns a dictionary with success status.
-    """
+    """Mark a task as done/completed. Returns success status."""
     try:
         # Get task
         task = await Task.get(PydanticObjectId(task_id))
@@ -305,7 +285,7 @@ async def mark_task_done(user_id: int, task_id: str) -> Dict[str, Any]:
         return {
             "success": True,
             "task_id": task_id,
-            "message": f"Task '{task.title}' marked as done! 🎉",
+            "message": "✓ Done! 🎉",
         }
 
     except Exception as e:
@@ -315,14 +295,7 @@ async def mark_task_done(user_id: int, task_id: str) -> Dict[str, Any]:
 
 @tool(args_schema=DeleteTaskInput)
 async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
-    """
-    Delete a task permanently with manual cascade deletion of reminders.
-
-    Manually deletes all associated reminders before deleting the task
-    to ensure no orphaned data.
-
-    Returns a dictionary with success status.
-    """
+    """Delete a task and its reminders permanently. Returns success status."""
     try:
         # Get task
         task = await Task.get(PydanticObjectId(task_id))
@@ -350,9 +323,11 @@ async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
             f"Task '{task_title}' (ID: {task_id}) deleted with {reminder_count} reminder(s) cascaded"
         )
 
-        message = f"Task '{task_title}' deleted successfully!"
+        message = "✓ Deleted"
         if reminder_count > 0:
-            message += f" ({reminder_count} associated reminder(s) also deleted)"
+            message += (
+                f" (+{reminder_count} reminder{'s' if reminder_count > 1 else ''})"
+            )
 
         return {
             "success": True,
@@ -370,11 +345,7 @@ async def delete_task(user_id: int, task_id: str) -> Dict[str, Any]:
 async def list_tasks(
     user_id: int, status: Optional[Literal["pending", "done"]] = None, limit: int = 10
 ) -> Dict[str, Any]:
-    """
-    List user's tasks, optionally filtered by status.
-
-    Returns a list of tasks with their details (datetimes in user's timezone).
-    """
+    """List tasks, optionally filtered by status. Returns task list with datetimes in user timezone."""
     try:
         # Get user
         user = await User.get_by_telegram_id(user_id)
@@ -418,7 +389,7 @@ async def list_tasks(
             "success": True,
             "tasks": task_list,
             "count": len(task_list),
-            "message": f"Found {len(task_list)} task(s)",
+            "message": f"{len(task_list)} task{'s' if len(task_list) != 1 else ''}",
         }
 
     except Exception as e:
@@ -428,11 +399,7 @@ async def list_tasks(
 
 @tool(args_schema=GetTaskStatsInput)
 async def get_task_statistics(user_id: int) -> Dict[str, Any]:
-    """
-    Get task statistics for the user (total, pending, done, by priority, etc.).
-
-    Returns a dictionary with various statistics.
-    """
+    """Get task statistics (total, pending, done, by priority). Returns statistics dictionary."""
     try:
         # Get user
         user = await User.get_by_telegram_id(user_id)
@@ -447,7 +414,7 @@ async def get_task_statistics(user_id: int) -> Dict[str, Any]:
         return {
             "success": True,
             "statistics": stats,
-            "message": "Task statistics retrieved successfully",
+            "message": "✓ Stats",
         }
 
     except Exception as e:

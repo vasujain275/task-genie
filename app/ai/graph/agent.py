@@ -32,7 +32,7 @@ MEMORY MANAGEMENT:
 - New thread created daily for each user (resets conversation context)
 
 MESSAGE TRIMMING:
-- Maintains last 10 messages per thread (+ system message)
+- Maintains last 5 messages per thread (+ system message)
 - Automatic trimming after each invocation
 - Benefits: token preservation, cost reduction, better performance
 
@@ -126,7 +126,7 @@ def get_thread_id(user_id: int) -> str:
 
 def trim_message_history(messages: Sequence[BaseMessage]) -> list[BaseMessage]:
     """
-    Trim message history to keep only the last 10 messages.
+    Trim message history to keep only the last 5 messages.
     Always preserves the system message (first message).
 
     This helps with:
@@ -140,26 +140,26 @@ def trim_message_history(messages: Sequence[BaseMessage]) -> list[BaseMessage]:
     Returns:
         Trimmed list of messages with system message preserved
     """
-    if len(messages) <= 11:  # System message + 10 conversation messages
+    if len(messages) <= 6:  # System message + 5 conversation messages
         return list(messages)
 
-    # Keep system message (first) + last 10 messages
+    # Keep system message (first) + last 5 messages
     system_msg = (
         messages[0] if messages and isinstance(messages[0], SystemMessage) else None
     )
 
     if system_msg:
-        # Trim to last 10 non-system messages
-        trimmed = [system_msg] + list(messages[-10:])
+        # Trim to last 5 non-system messages
+        trimmed = [system_msg] + list(messages[-5:])
         logger.debug(
-            f"Trimmed messages from {len(messages)} to {len(trimmed)} (system + last 10)"
+            f"Trimmed messages from {len(messages)} to {len(trimmed)} (system + last 5)"
         )
         return trimmed
     else:
-        # No system message, just keep last 10
-        trimmed = list(messages[-10:])
+        # No system message, just keep last 5
+        trimmed = list(messages[-5:])
         logger.debug(
-            f"Trimmed messages from {len(messages)} to {len(trimmed)} (last 10)"
+            f"Trimmed messages from {len(messages)} to {len(trimmed)} (last 5)"
         )
         return trimmed
 
@@ -384,7 +384,7 @@ def create_task_agent(
             # Invoke graph with checkpointing
             result = self.graph.invoke(state, config)
 
-            # Trim message history after invocation to keep only last 10 messages
+            # Trim message history after invocation to keep only last 5 messages
             if isinstance(result, dict) and "messages" in result:
                 result["messages"] = trim_message_history(result["messages"])
 
@@ -419,7 +419,7 @@ def create_task_agent(
             # Invoke graph with checkpointing
             result = await self.graph.ainvoke(state, config)
 
-            # Trim message history after invocation to keep only last 10 messages
+            # Trim message history after invocation to keep only last 5 messages
             if isinstance(result, dict) and "messages" in result:
                 result["messages"] = trim_message_history(result["messages"])
 
