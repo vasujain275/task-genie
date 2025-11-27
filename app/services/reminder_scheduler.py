@@ -20,6 +20,7 @@ EFFICIENCY:
 - Automatic error handling and logging
 """
 
+import asyncio
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -83,8 +84,8 @@ async def send_reminder_notification(reminder: Reminder) -> bool:
         )
 
         logger.info(
-            f"✅ Reminder sent to user {user.telegram_id} for task '{task.title}'"
-        )  # type: ignore[attr-defined]
+            f"✅ Reminder sent to user {user.telegram_id} for task '{task.title}'"  # type: ignore[attr-defined]
+        )
         return True
 
     except Exception as e:
@@ -182,7 +183,19 @@ def start_reminder_scheduler():
     try:
         logger.info("🚀 Starting reminder scheduler...")
 
-        scheduler = AsyncIOScheduler()
+        # Get the current event loop - critical for AsyncIOScheduler to work with FastAPI
+        try:
+            loop = asyncio.get_running_loop()
+            logger.info(f"Using existing event loop: {loop}")
+        except RuntimeError:
+            # No running loop - this shouldn't happen in FastAPI context
+            logger.warning(
+                "No running event loop found, scheduler may not work correctly"
+            )
+            loop = None
+
+        # Initialize AsyncIOScheduler with explicit event loop
+        scheduler = AsyncIOScheduler(event_loop=loop) if loop else AsyncIOScheduler()
 
         # Add job to run every minute at :00 seconds
         # Cron: "0 * * * *" means "at second 0 of every minute"

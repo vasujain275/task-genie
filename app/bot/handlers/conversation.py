@@ -1,6 +1,7 @@
-"""
-Natural language conversation handler using ReAct agent
-"""
+"""Natural language conversation handler using ReAct agent"""
+
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from aiogram import Router, F
 from aiogram.types import Message
@@ -16,6 +17,10 @@ from app.utils.security import decrypt_api_key
 
 logger = setup_logger(__name__)
 router = Router()
+
+# Thread pool for running blocking LangGraph operations
+# Max 10 workers to handle concurrent conversations without overwhelming the system
+executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="langgraph_")
 
 
 @router.message(StateFilter(ConversationMode.active), F.text & ~F.text.startswith("/"))
@@ -69,9 +74,12 @@ async def handle_conversation(message: Message, state: FSMContext):
             user_timezone=user.timezone,
         )
 
-        # Invoke agent with user message
-        response = await agent.ainvoke(
-            {"messages": [HumanMessage(content=message.text)]}
+        # Run LangGraph in a thread pool to prevent blocking the event loop
+        # This allows multiple users to interact with the bot concurrently
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            executor,
+            lambda: agent.invoke({"messages": [HumanMessage(content=message.text)]}),
         )
 
         # Extract the last message from the agent
