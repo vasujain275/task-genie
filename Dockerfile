@@ -42,5 +42,5 @@ USER appuser
 # Expose FastAPI port
 EXPOSE 8080
 
-# Production server (multi-worker uvicorn)
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "4"]
+# Production server
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

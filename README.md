@@ -225,13 +225,63 @@ uv run python -m app.main
 
 ### **Docker Setup**
 
+#### **Quick Start (All-in-One)**
+Uses prebuilt Docker Hub image with MongoDB and Redis:
 ```bash
-# Build the image
-docker build -t task-genie .
+# Create .env file from example
+cp .env.example .env
+# Edit .env with your configuration (TELEGRAM_BOT_TOKEN, ENCRYPTION_KEY, etc.)
 
-# Run with docker-compose (includes MongoDB and Redis)
+# Start all services (MongoDB, Redis, App)
 docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop all services
+docker-compose down
 ```
+
+#### **Development Setup**
+Builds app from local source instead of Docker Hub:
+```bash
+# Start development environment
+docker-compose -f docker-compose.dev.yaml up -d
+
+# Rebuild after code changes
+docker-compose -f docker-compose.dev.yaml up -d --build
+
+# Stop development environment
+docker-compose -f docker-compose.dev.yaml down
+```
+
+#### **Production Deployment**
+App-only setup (requires external MongoDB and Redis):
+```bash
+# Ensure .env has external MONGO_URI and REDIS_URL
+# Example: MONGO_URI=mongodb://user:pass@host:port
+#          REDIS_URL=redis://host:port
+
+# Start production app
+docker-compose -f docker-compose.prod.yaml up -d
+
+# Scale with multiple instances
+docker-compose -f docker-compose.prod.yaml up -d --scale app=3
+```
+
+#### **Docker Environment Variables**
+
+For docker-compose.yaml and docker-compose.dev.yaml, add to your `.env`:
+```env
+# MongoDB credentials (for Docker services)
+MONGO_USERNAME=admin
+MONGO_PASSWORD=your_secure_password
+
+# Optional: Custom Docker image
+DOCKER_IMAGE=vasujain275/task-genie:latest
+```
+
+> **Note**: MongoDB and Redis URLs are automatically configured in docker-compose to use service names (`mongodb:27017`, `redis:6379`)
 
 ---
 
@@ -318,7 +368,7 @@ ENCRYPTION_KEY=your_fernet_encryption_key
 LOG_LEVEL=INFO
 
 # LLM Configuration
-LLM=gpt-4o-mini
+LLM=gpt-5-nano
 
 # LangSmith (optional - for debugging)
 LANGCHAIN_TRACING_V2=false
@@ -448,22 +498,97 @@ LOG_LEVEL=DEBUG  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 ## 🔧 Deployment
 
-### **Production Deployment**
+### **Production Deployment Options**
 
-1. **Set up webhook** (instead of polling):
+#### **Option 1: All-in-One Docker (Development/Testing)**
+Includes MongoDB and Redis in the same compose stack:
+```bash
+# Clone the repository
+git clone https://github.com/vasujain275/task-genie.git
+cd task-genie
+
+# Set up environment
+cp .env.example .env
+# Edit .env with your TELEGRAM_BOT_TOKEN, ENCRYPTION_KEY, etc.
+
+# Add MongoDB credentials to .env
+echo "MONGO_USERNAME=admin" >> .env
+echo "MONGO_PASSWORD=your_secure_password" >> .env
+
+# Start all services
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f app
+```
+
+#### **Option 2: Production Deployment (External Services)**
+App-only deployment with cloud MongoDB and Redis:
+```bash
+# Set up .env with external services
+MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/task_genie
+REDIS_URL=redis://your-redis-host:6379
+TELEGRAM_BOT_TOKEN=your_bot_token
+WEBHOOK_URL=https://yourdomain.com/webhook
+ENCRYPTION_KEY=your_encryption_key
+
+# Deploy app only
+docker-compose -f docker-compose.prod.yaml up -d
+```
+
+#### **Option 3: Development with Local Build**
+Build and run from source code:
+```bash
+# Start development stack
+docker-compose -f docker-compose.dev.yaml up -d
+
+# Rebuild after changes
+docker-compose -f docker-compose.dev.yaml up -d --build
+```
+
+### **Webhook Setup (Production)**
+
+1. **Set up webhook** in your `.env`:
 ```env
 WEBHOOK_URL=https://yourdomain.com/webhook
 ```
 
-2. **Use production server**:
-```bash
-# Multi-worker uvicorn (in Dockerfile)
-uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 4
+2. **Configure reverse proxy** (Nginx example):
+```nginx
+server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location /webhook {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
 
-3. **Deploy with Docker**:
+3. **Restart the app** to register webhook with Telegram
+
+### **Docker Image Tags**
+
+Available on Docker Hub: `vasujain275/task-genie`
+- `latest` - Latest stable release
+- `v1.0.0` - Specific version tags
+- `dev` - Development builds
+
+### **Health Checks**
+
+All docker-compose files include health checks:
+- MongoDB: Database ping
+- Redis: Redis CLI ping
+- App: HTTP health endpoint at `/health`
+
+Monitor with:
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose ps
 ```
 
 ### **Scaling Considerations**
