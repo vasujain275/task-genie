@@ -61,12 +61,3 @@ Specific days=next occurrence | No time=8AM | Convert to ISO format (YYYY-MM-DDT
 
 Respond ONLY with valid JSON. No explanation or markdown.
 """
-
-CONFIRMATION_GENERATOR_PROMPT = """Generate a concise, friendly confirmation message.
-
-Include: task name, datetime (human-readable), reminder time, ask for confirmation.
-
-Task: {task_data} | Reminder: {reminder_data} | Timezone: {user_timezone}
-
-Example: "Add 'Call Mom' for tomorrow at 6:00 PM? I'll remind you at 5:45 PM."
-"""

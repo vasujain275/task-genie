@@ -334,8 +334,8 @@ def create_task_agent(
         "agent", should_continue, {"tools": "tools", "end": END}
     )
 
-    # Add edge from tools back to agent
-    workflow.add_edge("tools", "agent")
+    # Add edge from tools directly to END (skip second LLM call for cost savings)
+    workflow.add_edge("tools", END)
 
     # Compile the graph with memory checkpointer
     graph = workflow.compile(checkpointer=memory_checkpointer)

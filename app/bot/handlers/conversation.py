@@ -7,7 +7,7 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 
 from app.models.user import User
 from app.bot.states import ConversationMode
@@ -85,7 +85,36 @@ async def handle_conversation(message: Message, state: FSMContext):
         # Extract the last message from the agent
         if response and "messages" in response:
             last_message = response["messages"][-1]
-            agent_response = last_message.content  # type: ignore[union-attr]
+
+            # Handle ToolMessage (after tool execution, no second LLM call)
+            if isinstance(last_message, ToolMessage):
+                # Extract the tool response - it's JSON with a "message" or "error" field
+                try:
+                    import json
+
+                    tool_result = (
+                        json.loads(last_message.content)
+                        if isinstance(last_message.content, str)
+                        else last_message.content
+                    )  # type: ignore[union-attr]
+
+                    # Get the friendly message from tool response
+                    if isinstance(tool_result, dict):
+                        if "message" in tool_result:
+                            agent_response = tool_result["message"]
+                        elif "error" in tool_result:
+                            agent_response = f"❌ Error: {tool_result['error']}"
+                        else:
+                            # Fallback: use raw tool response
+                            agent_response = str(last_message.content)  # type: ignore[union-attr]
+                    else:
+                        agent_response = str(last_message.content)  # type: ignore[union-attr]
+                except Exception as parse_error:
+                    logger.warning(f"Failed to parse tool message: {parse_error}")
+                    agent_response = str(last_message.content)  # type: ignore[union-attr]
+            else:
+                # Regular AI message (direct response without tool call)
+                agent_response = last_message.content  # type: ignore[union-attr]
         else:
             agent_response = "I couldn't process that. Could you try again?"
 
