@@ -233,26 +233,26 @@ cp .env.example .env
 # Edit .env with your configuration (TELEGRAM_BOT_TOKEN, ENCRYPTION_KEY, etc.)
 
 # Start all services (MongoDB, Redis, App)
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f app
+docker compose logs -f app
 
 # Stop all services
-docker-compose down
+docker compose down
 ```
 
 #### **Development Setup**
 Builds app from local source instead of Docker Hub:
 ```bash
 # Start development environment
-docker-compose -f docker-compose.dev.yaml up -d
+docker compose -f docker-compose.dev.yaml up -d
 
 # Rebuild after code changes
-docker-compose -f docker-compose.dev.yaml up -d --build
+docker compose -f docker-compose.dev.yaml up -d --build
 
 # Stop development environment
-docker-compose -f docker-compose.dev.yaml down
+docker compose -f docker-compose.dev.yaml down
 ```
 
 #### **Production Deployment**
@@ -263,10 +263,10 @@ App-only setup (requires external MongoDB and Redis):
 #          REDIS_URL=redis://host:port
 
 # Start production app
-docker-compose -f docker-compose.prod.yaml up -d
+docker compose -f docker-compose.prod.yaml up -d
 
 # Scale with multiple instances
-docker-compose -f docker-compose.prod.yaml up -d --scale app=3
+docker compose -f docker-compose.prod.yaml up -d --scale app=3
 ```
 
 #### **Docker Environment Variables**
@@ -281,7 +281,7 @@ MONGO_PASSWORD=your_secure_password
 DOCKER_IMAGE=vasujain275/task-genie:latest
 ```
 
-> **Note**: MongoDB and Redis URLs are automatically configured in docker-compose to use service names (`mongodb:27017`, `redis:6379`)
+> **Note**: MongoDB and Redis URLs are automatically configured in Docker Compose to use service names (`mongodb:27017`, `redis:6379`)
 
 ---
 
@@ -516,10 +516,10 @@ echo "MONGO_USERNAME=admin" >> .env
 echo "MONGO_PASSWORD=your_secure_password" >> .env
 
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Check logs
-docker-compose logs -f app
+docker compose logs -f app
 ```
 
 #### **Option 2: Production Deployment (External Services)**
@@ -533,17 +533,17 @@ WEBHOOK_URL=https://yourdomain.com/webhook
 ENCRYPTION_KEY=your_encryption_key
 
 # Deploy app only
-docker-compose -f docker-compose.prod.yaml up -d
+docker compose -f docker-compose.prod.yaml up -d
 ```
 
 #### **Option 3: Development with Local Build**
 Build and run from source code:
 ```bash
 # Start development stack
-docker-compose -f docker-compose.dev.yaml up -d
+docker compose -f docker-compose.dev.yaml up -d
 
 # Rebuild after changes
-docker-compose -f docker-compose.dev.yaml up -d --build
+docker compose -f docker-compose.dev.yaml up -d --build
 ```
 
 ### **Webhook Setup (Production)**
@@ -581,14 +581,14 @@ Available on Docker Hub: `vasujain275/task-genie`
 
 ### **Health Checks**
 
-All docker-compose files include health checks:
+All Docker Compose files include health checks:
 - MongoDB: Database ping
 - Redis: Redis CLI ping
 - App: HTTP health endpoint at `/health`
 
 Monitor with:
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 ### **Scaling Considerations**
