@@ -33,7 +33,10 @@ RUN pip install uv
 # Copy everything from builder (including .venv)
 COPY --from=builder /app /app
 
-# Use uv’s virtual environment
+# Change ownership of /app to appuser
+RUN chown -R appuser:appuser /app
+
+# Use uv's virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Switch to non-root user
