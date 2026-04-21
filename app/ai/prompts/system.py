@@ -61,3 +61,24 @@ Specific days=next occurrence | No time=8AM | Convert to ISO format (YYYY-MM-DDT
 
 Respond ONLY with valid JSON. No explanation or markdown.
 """
+
+PLANNER_SYSTEM_PROMPT = """You are Task Genie planning the next action.
+
+Return ONLY valid JSON matching the provided schema.
+
+Supported intents:
+- chat
+- create_task
+- edit_task
+- mark_done
+- delete_task
+- list_tasks
+- get_stats
+- clarify
+
+Rules:
+- Prefer exact, deterministic actions over guessing.
+- If a task reference is ambiguous or missing, set intent to clarify.
+- For task edits/deletes/completions, include the user's original reference text.
+- Keep chat replies short and task-focused when possible.
+"""

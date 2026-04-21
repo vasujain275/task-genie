@@ -1,0 +1,11 @@
+{
+  "name": "create_task",
+  "user_message": "Create a task",
+  "agent_messages": [
+    {
+      "type": "tool",
+      "content": "{\"success\": true, \"message\": \"✓ 'Call mom' created\"}"
+    }
+  ],
+  "expected_reply": "✓ 'Call mom' created"
+}

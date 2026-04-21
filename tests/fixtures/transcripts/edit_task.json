@@ -1,0 +1,11 @@
+{
+  "name": "edit_task",
+  "user_message": "Change the title",
+  "agent_messages": [
+    {
+      "type": "tool",
+      "content": "{\"success\": true, \"message\": \"✓ Updated\"}"
+    }
+  ],
+  "expected_reply": "✓ Updated"
+}

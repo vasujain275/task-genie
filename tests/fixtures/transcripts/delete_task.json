@@ -1,0 +1,11 @@
+{
+  "name": "delete_task",
+  "user_message": "Delete that task",
+  "agent_messages": [
+    {
+      "type": "tool",
+      "content": "{\"success\": true, \"message\": \"✓ Deleted (+1 reminder)\"}"
+    }
+  ],
+  "expected_reply": "✓ Deleted (+1 reminder)"
+}

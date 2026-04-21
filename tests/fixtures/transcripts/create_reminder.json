@@ -1,0 +1,11 @@
+{
+  "name": "create_reminder",
+  "user_message": "Set a reminder",
+  "agent_messages": [
+    {
+      "type": "tool",
+      "content": "{\"success\": true, \"message\": \"✓ Reminder set\"}"
+    }
+  ],
+  "expected_reply": "✓ Reminder set"
+}

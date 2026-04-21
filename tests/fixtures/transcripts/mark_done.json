@@ -1,0 +1,11 @@
+{
+  "name": "mark_done",
+  "user_message": "Mark it done",
+  "agent_messages": [
+    {
+      "type": "tool",
+      "content": "{\"success\": true, \"message\": \"✓ Done! 🎉\"}"
+    }
+  ],
+  "expected_reply": "✓ Done! 🎉"
+}

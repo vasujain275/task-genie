@@ -1,0 +1,11 @@
+{
+  "name": "list_tasks",
+  "user_message": "Show my tasks",
+  "agent_messages": [
+    {
+      "type": "tool",
+      "content": "{\"success\": true, \"message\": \"2 tasks\", \"count\": 2}"
+    }
+  ],
+  "expected_reply": "2 tasks"
+}

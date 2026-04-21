@@ -1,5 +1,5 @@
 from beanie import init_beanie
-from app.models import User, Task, Reminder
+from app.models import User, Task, Reminder, ConversationTurn
 from app.config import settings
 from app.utils.logger import setup_logger
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -14,7 +14,7 @@ async def init_db(client: AsyncIOMotorClient):
 
         await init_beanie(
             database=client.get_database(settings.MONGO_DB_NAME),  # type: ignore
-            document_models=[User, Task, Reminder],
+            document_models=[User, Task, Reminder, ConversationTurn],
         )
         logger.info("Database models registered successfully")
 

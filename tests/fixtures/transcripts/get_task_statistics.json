@@ -1,0 +1,11 @@
+{
+  "name": "get_task_statistics",
+  "user_message": "Show task stats",
+  "agent_messages": [
+    {
+      "type": "tool",
+      "content": "{\"success\": true, \"message\": \"✓ Stats\", \"statistics\": {\"total\": 5}}"
+    }
+  ],
+  "expected_reply": "✓ Stats"
+}

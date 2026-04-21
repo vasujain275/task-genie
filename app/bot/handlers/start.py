@@ -24,9 +24,6 @@ async def start_handler(message: Message, state: FSMContext):
     Otherwise, shows normal welcome message with quick access to settings.
     """
     try:
-        # Clear any existing state when user hits /start
-        await state.clear()
-
         # Get or create user
         user = None
         if message.from_user:
@@ -41,6 +38,9 @@ async def start_handler(message: Message, state: FSMContext):
             logger.warning("Received /start command without user information")
             await message.answer("Unable to retrieve user ID")
             return
+
+        # Clear any existing state after a successful user lookup
+        await state.clear()
     except Exception as e:
         logger.error(f"Error in start_handler: {e}", exc_info=True)
         await message.answer("An error occurred. Please try again later.")
@@ -81,4 +81,3 @@ async def start_handler(message: Message, state: FSMContext):
             "Use the button below to update your settings anytime.",
             reply_markup=get_settings_keyboard(),
         )
-        await state.clear()

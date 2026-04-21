@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, BackgroundTasks
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -37,7 +37,11 @@ async def lifespan(app: FastAPI):
         logger.info("Dispatcher configured with handlers")
 
         if settings.WEBHOOK_URL:
-            await bot.set_webhook(settings.WEBHOOK_URL)
+            webhook_kwargs = {}
+            if settings.TELEGRAM_WEBHOOK_SECRET_TOKEN:
+                webhook_kwargs["secret_token"] = settings.TELEGRAM_WEBHOOK_SECRET_TOKEN
+
+            await bot.set_webhook(settings.WEBHOOK_URL, **webhook_kwargs)
             logger.info(f"Webhook set to: {settings.WEBHOOK_URL}")
         else:
             logger.warning("No webhook URL configured - bot will not receive updates")
@@ -101,25 +105,57 @@ async def process_update(update: types.Update, dp):
 async def webhook(request: Request, background_tasks: BackgroundTasks):
     """Receive updates from Telegram and process them asynchronously"""
     try:
-        update_data = await request.json()
-        logger.info("=== Webhook update received ===")
-        logger.info(f"Update keys: {update_data.keys()}")
+        if settings.TELEGRAM_WEBHOOK_SECRET_TOKEN:
+            token = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+            if token != settings.TELEGRAM_WEBHOOK_SECRET_TOKEN:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Invalid webhook secret token",
+                )
 
-        # Log message details if present
+        try:
+            update_data = await request.json()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Telegram update payload",
+            ) from exc
+        logger.info("Webhook update received keys=%s", sorted(update_data.keys()))
+
         if "message" in update_data:
             msg = update_data["message"]
-            logger.info(f"Message content_type: {msg.get('content_type', 'N/A')}")
-            logger.info(f"Message keys: {msg.keys()}")
-            if "web_app_data" in msg:
-                logger.info(f"WEB APP DATA FOUND: {msg['web_app_data']}")
+            logger.info(
+                "Webhook message metadata chat_id=%s message_id=%s has_web_app_data=%s",
+                msg.get("chat", {}).get("id"),
+                msg.get("message_id"),
+                "web_app_data" in msg,
+            )
 
-        update = types.Update(**update_data)
+        try:
+            update = types.Update(**update_data)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Telegram update payload",
+            ) from exc
+
+        dp = getattr(request.app.state, "dp", None)
+        if dp is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Dispatcher is not configured",
+            )
 
         # Process update in background - IMMEDIATELY return to Telegram
-        background_tasks.add_task(process_update, update, request.app.state.dp)
+        background_tasks.add_task(process_update, update, dp)
 
         # Return immediately - don't wait for processing to complete
         return {"ok": True}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing webhook: {e}", exc_info=True)
-        return {"ok": False}
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process webhook",
+        ) from e

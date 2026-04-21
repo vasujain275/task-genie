@@ -1,0 +1,4 @@
+{
+  "name": "missing_api_key",
+  "expected_reply": "⚠️ Please configure your OpenAI API key first.\n\nUse /settings to configure your API key."
+}

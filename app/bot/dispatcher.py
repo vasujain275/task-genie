@@ -20,7 +20,7 @@ def setup_dispatcher() -> Dispatcher:
     try:
         logger.info("Setting up dispatcher with Redis storage")
         storage = RedisStorage.from_url(
-            f"{settings.REDIS_URL}/0",
+            settings.REDIS_URL,
             # state_ttl=3600,  # state expires in 1 hour
             # data_ttl=3600,  # associated data expires in 1 hour
         )

@@ -1,0 +1,4 @@
+{
+  "name": "user_not_found",
+  "expected_reply": "User not found. Please use /start to register."
+}
